@@ -13,16 +13,20 @@ import (
 )
 
 type RoomClient struct {
-	peerCon    *webrtc.PeerConnection
+	pubPeerCon *webrtc.PeerConnection
+	wsPeer     *peer.Peer
 	room       RoomInfo
 	name       string
 	audioTrack *webrtc.Track
 	videoTrack *webrtc.Track
 	paused     bool
 	ionPath    string
+	ReadyChan  chan bool
+	Connected  bool
+	OnLogin    func(json.RawMessage)
 }
 
-func NewClient(name, room, path string) RoomClient {
+func newPeerCon() *webrtc.PeerConnection {
 	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{
 		ICEServers: []webrtc.ICEServer{
 			{
@@ -33,71 +37,81 @@ func NewClient(name, room, path string) RoomClient {
 	if err != nil {
 		log.Fatal(err)
 	}
+	return pc
+}
+
+func NewClient(name, room, path string) RoomClient {
+	pc := newPeerCon()
 
 	return RoomClient{
-		peerCon: pc,
+		pubPeerCon: pc,
 		room: RoomInfo{
 			Uid: name,
 			Rid: room,
 		},
-		name:    name,
-		ionPath: path,
+		name:      name,
+		ionPath:   path,
+		ReadyChan: make(chan bool),
 	}
 }
 
 func (t *RoomClient) Init() {
 	wsClient := client.NewClient(t.ionPath+"?peer="+t.room.Uid, t.handleWebSocketOpen)
-	wsClient.ReadMessage()
+	go wsClient.ReadMessage()
 }
 
 func (t *RoomClient) handleWebSocketOpen(transport *transport.WebSocketTransport) {
 	logger.Infof("handleWebSocketOpen")
 
-	pr := peer.NewPeer(t.room.Uid, transport)
-	pr.On("close", func(code int, err string) {
+	t.wsPeer = peer.NewPeer(t.room.Uid, transport)
+	t.wsPeer.On("close", func(code int, err string) {
 		logger.Infof("peer close [%d] %s", code, err)
 	})
 
 	joinMsg := JoinMsg{RoomInfo: t.room, Info: UserInfo{Name: t.name}}
-
-	pr.Request("join", joinMsg,
+	t.wsPeer.Request("join", joinMsg,
 		func(result json.RawMessage) {
 			logger.Infof("login success: =>  %s", result)
 			// Add media stream
-			t.publish(pr)
+			// // t.publish()
+			// t.Connected = true
+			t.ReadyChan <- true
+			if t.OnLogin != nil {
+				t.OnLogin(result)
+			}
 		},
 		func(code int, err string) {
 			logger.Infof("login reject: %d => %s", code, err)
+			t.ReadyChan <- false
 		})
 }
 
-func (t *RoomClient) publish(peer *peer.Peer) {
-	// Get code from rtwatch and gstreamer
+func (t *RoomClient) Publish() {
 	if t.audioTrack != nil {
-		if _, err := t.peerCon.AddTrack(t.audioTrack); err != nil {
+		if _, err := t.pubPeerCon.AddTrack(t.audioTrack); err != nil {
 			log.Print(err)
 			panic(err)
 		}
 	}
 	if t.videoTrack != nil {
-		if _, err := t.peerCon.AddTrack(t.videoTrack); err != nil {
+		if _, err := t.pubPeerCon.AddTrack(t.videoTrack); err != nil {
 			log.Print(err)
 			panic(err)
 		}
 	}
 
-	t.peerCon.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+	t.pubPeerCon.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		fmt.Printf("Connection State has changed %s \n", connectionState.String())
 	})
 
 	// Create an offer to send to the browser
-	offer, err := t.peerCon.CreateOffer(nil)
+	offer, err := t.pubPeerCon.CreateOffer(nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// Sets the LocalDescription, and starts our UDP listeners
-	err = t.peerCon.SetLocalDescription(offer)
+	err = t.pubPeerCon.SetLocalDescription(offer)
 	if err != nil {
 		panic(err)
 	}
@@ -105,7 +119,7 @@ func (t *RoomClient) publish(peer *peer.Peer) {
 
 	pubMsg := PublishMsg{RoomInfo: t.room, Jsep: offer, Options: newPublishOptions()}
 
-	peer.Request("publish", pubMsg, t.finalizeConnect,
+	t.wsPeer.Request("publish", pubMsg, t.finalizeConnect,
 		func(code int, err string) {
 			logger.Infof("publish reject: %d => %s", code, err)
 		})
@@ -122,8 +136,12 @@ func (t *RoomClient) finalizeConnect(result json.RawMessage) {
 	}
 
 	// Set the remote SessionDescription
-	err = t.peerCon.SetRemoteDescription(msg.Ans)
+	err = t.pubPeerCon.SetRemoteDescription(msg.Ans)
 	if err != nil {
 		panic(err)
 	}
+}
+
+func (t *RoomClient) subcribe(mid string) {
+
 }

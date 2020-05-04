@@ -2,9 +2,56 @@ package main
 
 import (
 	"flag"
+	"log"
+	"sync"
+	"time"
 
 	"github.com/jbrady42/ion-load/ion"
 )
+
+var (
+	shutdown  = false
+	waitGroup sync.WaitGroup
+)
+
+func newClient(name, room, path string, index int) ion.RoomClient {
+	client := ion.NewClient(name, room, path)
+	go func() {
+		waitGroup.Add(1)
+		defer waitGroup.Done()
+
+		client.Init()
+
+		ready := <-client.ReadyChan
+		if ready {
+			// Start producer
+			client.Publish()
+		} else {
+			log.Println("Client initialization error")
+			return
+		}
+
+		// Comfigure auto subscribe in room
+
+		// Wire consumers
+
+		// Wait for the end of the test then shutdown
+
+		for !shutdown {
+			// wait
+		}
+
+		log.Printf("Begin client %v shutdown", index)
+
+		// Unsubscribe Consumers
+
+		// Unpublish producer
+
+		// Close client
+
+	}()
+	return client
+}
 
 func main() {
 	var containerPath string
@@ -16,6 +63,23 @@ func main() {
 	flag.StringVar(&roomName, "room", "video-demo", "Room name for Ion")
 	flag.Parse()
 
-	client := ion.NewClient("test", roomName, ionPath)
-	client.Init()
+	name := "testname"
+
+	_ = newClient(name, roomName, ionPath, 0)
+
+	// Run test
+	// Create X rooms
+	// Create y clients per room
+	// Each client
+	//// publishes 1 streams
+	//// Consumes all streams in the room
+	//// Measure quality of delivered streams in some way
+
+	time.Sleep(10 * time.Second)
+	shutdown = true
+
+	//Wait for client shutdown
+	waitGroup.Wait()
+	log.Println("All clients shut down")
+
 }
