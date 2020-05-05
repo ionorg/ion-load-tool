@@ -12,12 +12,11 @@ import (
 )
 
 var (
-	mediaSource *producer.FileProducer
-	waitGroup   sync.WaitGroup
-	doneChan    = make(chan interface{})
+	waitGroup sync.WaitGroup
+	doneChan  = make(chan interface{})
 )
 
-func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}) {
+func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, mediaSource *producer.FileProducer) {
 	defer waitGroup.Done()
 
 	// Configure sender tracks
@@ -51,9 +50,14 @@ func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}) {
 
 }
 
-func newClient(name, room, path string, index int) ion.RoomClient {
+func newClient(name, room, path, vidFile string, index int) ion.RoomClient {
 	client := ion.NewClient(name, room, path)
-	go runClient(client, index, doneChan)
+
+	mediaSource := producer.NewFileProducer(vidFile)
+	offset := index * 100
+	go mediaSource.ReadLoop(offset)
+
+	go runClient(client, index, doneChan, mediaSource)
 	return client
 }
 
@@ -61,26 +65,23 @@ func main() {
 	var containerPath string
 	var ionPath string
 	var roomName string
+	var numClients int
 
 	flag.StringVar(&containerPath, "container-path", "", "path to the media file you want to playback")
 	flag.StringVar(&ionPath, "ion-url", "ws://localhost:8443/ws", "websocket url for ion biz system")
 	flag.StringVar(&roomName, "room", "video-demo", "Room name for Ion")
+	flag.IntVar(&numClients, "clients", 1, "Number of clients to start")
 	flag.Parse()
 
 	if containerPath == "" {
 		panic("-container-path must be specified")
 	}
 
-	mediaSource = producer.NewFileProducer(containerPath)
-	go mediaSource.ReadLoop(500)
-
-	maxClients := 1
-
-	for i := 0; i < maxClients; i++ {
+	for i := 0; i < numClients; i++ {
 		clientName := fmt.Sprintf("client_%v", i)
-		_ = newClient(clientName, roomName, ionPath, i)
+		_ = newClient(clientName, roomName, ionPath, containerPath, i)
 	}
-	waitGroup.Add(maxClients)
+	waitGroup.Add(numClients)
 
 	// Run test
 	// Create X rooms
