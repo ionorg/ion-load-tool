@@ -6,7 +6,7 @@ import (
 
 func newPublishOptions() biz.PublishOptions {
 	return biz.PublishOptions{
-		Codec:      "vp8",
+		Codec:      "VP8",
 		Resolution: "hd",
 		Bandwidth:  1024,
 		Audio:      false,

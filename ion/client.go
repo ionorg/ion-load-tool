@@ -18,8 +18,8 @@ type RoomClient struct {
 	wsPeer     *peer.Peer
 	room       biz.RoomInfo
 	name       string
-	audioTrack *webrtc.Track
-	videoTrack *webrtc.Track
+	AudioTrack *webrtc.Track
+	VideoTrack *webrtc.Track
 	paused     bool
 	ionPath    string
 	ReadyChan  chan bool
@@ -80,14 +80,14 @@ func (t *RoomClient) handleWebSocketOpen(transport *transport.WebSocketTransport
 }
 
 func (t *RoomClient) Publish() {
-	if t.audioTrack != nil {
-		if _, err := t.pubPeerCon.AddTrack(t.audioTrack); err != nil {
+	if t.AudioTrack != nil {
+		if _, err := t.pubPeerCon.AddTrack(t.AudioTrack); err != nil {
 			log.Print(err)
 			panic(err)
 		}
 	}
-	if t.videoTrack != nil {
-		if _, err := t.pubPeerCon.AddTrack(t.videoTrack); err != nil {
+	if t.VideoTrack != nil {
+		if _, err := t.pubPeerCon.AddTrack(t.VideoTrack); err != nil {
 			log.Print(err)
 			panic(err)
 		}
@@ -110,7 +110,11 @@ func (t *RoomClient) Publish() {
 	}
 	log.Println(offer)
 
-	pubMsg := biz.PublishMsg{RoomInfo: t.room, Jsep: offer, Options: newPublishOptions()}
+	pubMsg := biz.PublishMsg{
+		RoomInfo: t.room,
+		RTCInfo:  biz.RTCInfo{Jsep: offer},
+		Options:  newPublishOptions(),
+	}
 
 	t.wsPeer.Request("publish", pubMsg, t.finalizeConnect,
 		func(code int, err string) {
@@ -129,12 +133,16 @@ func (t *RoomClient) finalizeConnect(result json.RawMessage) {
 	}
 
 	// Set the remote SessionDescription
-	err = t.pubPeerCon.SetRemoteDescription(msg.Ans)
+	err = t.pubPeerCon.SetRemoteDescription(msg.Jsep)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func (t *RoomClient) subcribe(mid string) {
+
+}
+
+func (t *RoomClient) Leave() {
 
 }
