@@ -82,6 +82,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
+github.com/jbrady42/ion v0.3.1 h1:0M3T1a9RwlDoR68r1J51g5u9iUc3lSabZfo9d02eGn8=
+github.com/jbrady42/ion v0.3.1/go.mod h1:vtiVQa7lAF8E0YiT21et1ziq33l0YOjNNJBkEYgp+ng=
 github.com/jonboulle/clockwork v0.1.0 h1:VKV+ZcuP6l3yW9doeqz6ziZGgcynBVQO+obU0+0hcPo=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/json-iterator/go v1.1.9 h1:9yzud/Ht36ygwatGx56VwCZtlI/2AD15T1X2sjSuGns=
@@ -143,8 +145,6 @@ github.com/pion/dtls/v2 v2.0.0/go.mod h1:VkY5VL2wtsQQOG60xQ4lkV5pdn0wwBBTzCfRJqX
 github.com/pion/ice v0.7.13/go.mod h1:U3ERMkJgkPMlBjzMe2XxIQPl6ZrfRHyENwGCBoFrWWk=
 github.com/pion/ice v0.7.14 h1:lin/tzVc562t0Qk62/JlfOMX/RWuUSq/YyXakH2HTTQ=
 github.com/pion/ice v0.7.14/go.mod h1:/Lz6jAUhsvXed7kNJImXtvVSgjtcdGKoZAZIYb9WEm0=
-github.com/pion/ion v0.3.0 h1:8kwPsodKlPudj57Ke8tDZgebWhDkPOofRDW9TNLfKtA=
-github.com/pion/ion v0.3.0/go.mod h1:vtiVQa7lAF8E0YiT21et1ziq33l0YOjNNJBkEYgp+ng=
 github.com/pion/logging v0.2.2 h1:M9+AIj/+pxNsDfAT64+MAVgJO0rsyLnoJKCqf//DoeY=
 github.com/pion/logging v0.2.2/go.mod h1:k0/tDVsRCX2Mb2ZEmTqNa7CWsQPc+YYCB7Q+5pahoms=
 github.com/pion/mdns v0.0.4 h1:O4vvVqr4DGX63vzmO6Fw9vpy3lfztVWHGCQfyw0ZLSY=

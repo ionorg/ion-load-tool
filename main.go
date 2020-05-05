@@ -4,7 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/jbrady42/ion-load/ion"
@@ -83,15 +86,17 @@ func main() {
 	}
 	waitGroup.Add(numClients)
 
-	// Run test
-	// Create X rooms
-	// Create y clients per room
-	// Each client
-	//// publishes 1 streams
-	//// Consumes all streams in the room
-	//// Measure quality of delivered streams in some way
+	// Setup shutdown
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	timer := time.NewTimer(5 * time.Minute)
 
-	time.Sleep(60 * time.Second)
+	select {
+	case <-sigs:
+	case <-timer.C:
+	}
+
+	// Signal shutdown
 	close(doneChan)
 
 	//Wait for client shutdown

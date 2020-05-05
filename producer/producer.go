@@ -12,10 +12,6 @@ import (
 	"github.com/pion/webrtc/v2/pkg/media/ivfreader"
 )
 
-// TODO
-// Loop at end of track
-// Random open position
-
 type FileProducer struct {
 	name    string
 	stop    bool
