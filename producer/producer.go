@@ -46,7 +46,7 @@ func (t *FileProducer) Stop() {
 	t.stop = true
 }
 
-func (t *FileProducer) ReadLoop() {
+func (t *FileProducer) ReadLoop(startSeekFrames int) {
 	file, err := os.Open(t.name)
 	if err != nil {
 		panic(err)
@@ -57,6 +57,12 @@ func (t *FileProducer) ReadLoop() {
 		panic(ivfErr)
 	}
 
+	// Discard frames
+	for i := 0; i < startSeekFrames; i++ {
+		// TODO check for errors
+		ivf.ParseNextFrame()
+	}
+
 	// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
 	// This isn't required since the video is timestamped, but we will such much higher loss if we send all at once.
 	sleepTime := time.Millisecond * time.Duration((float32(header.TimebaseNumerator)/float32(header.TimebaseDenominator))*1000)
@@ -64,14 +70,19 @@ func (t *FileProducer) ReadLoop() {
 	for !t.stop {
 		// Push sample
 		frame, _, ivfErr := ivf.ParseNextFrame()
-		// TODO restart video
 		if ivfErr == io.EOF {
-			log.Println("All frames parsed and sent")
-			os.Exit(0)
+			log.Println("All frames parsed and sent. Restart file")
+			// TODO cleanup
+			file.Seek(0, 0)
+			ivf, header, ivfErr = ivfreader.NewWith(file)
+			if ivfErr != nil {
+				panic(ivfErr)
+			}
+			continue
 		}
 
 		if ivfErr != nil {
-			panic(ivfErr)
+			log.Println("IVF error", ivfErr)
 		}
 
 		time.Sleep(sleepTime)

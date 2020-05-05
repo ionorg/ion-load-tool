@@ -18,7 +18,6 @@ var (
 )
 
 func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}) {
-	waitGroup.Add(1)
 	defer waitGroup.Done()
 
 	// Configure sender tracks
@@ -73,12 +72,15 @@ func main() {
 	}
 
 	mediaSource = producer.NewFileProducer(containerPath)
-	go mediaSource.ReadLoop()
+	go mediaSource.ReadLoop(500)
 
-	for i := 0; i < 2; i++ {
+	maxClients := 1
+
+	for i := 0; i < maxClients; i++ {
 		clientName := fmt.Sprintf("client_%v", i)
 		_ = newClient(clientName, roomName, ionPath, i)
 	}
+	waitGroup.Add(maxClients)
 
 	// Run test
 	// Create X rooms
