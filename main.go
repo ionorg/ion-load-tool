@@ -14,42 +14,46 @@ var (
 	waitGroup sync.WaitGroup
 )
 
+func runClient(client ion.RoomClient, index int) {
+	waitGroup.Add(1)
+	defer waitGroup.Done()
+
+	// Configure sender tracks
+
+	client.Init()
+
+	ready := <-client.ReadyChan
+	if !ready {
+		log.Println("Client initialization error")
+		return
+	}
+
+	// Start producer
+	client.Publish()
+
+	// Comfigure auto subscribe in room
+
+	// Wire consumers
+
+	// Wait for the end of the test then shutdown
+
+	for !shutdown {
+		// wait
+	}
+
+	log.Printf("Begin client %v shutdown", index)
+
+	// Unsubscribe Consumers
+
+	// Unpublish producer
+
+	// Close client
+
+}
+
 func newClient(name, room, path string, index int) ion.RoomClient {
 	client := ion.NewClient(name, room, path)
-	go func() {
-		waitGroup.Add(1)
-		defer waitGroup.Done()
-
-		client.Init()
-
-		ready := <-client.ReadyChan
-		if ready {
-			// Start producer
-			client.Publish()
-		} else {
-			log.Println("Client initialization error")
-			return
-		}
-
-		// Comfigure auto subscribe in room
-
-		// Wire consumers
-
-		// Wait for the end of the test then shutdown
-
-		for !shutdown {
-			// wait
-		}
-
-		log.Printf("Begin client %v shutdown", index)
-
-		// Unsubscribe Consumers
-
-		// Unpublish producer
-
-		// Close client
-
-	}()
+	go runClient(client, index)
 	return client
 }
 
@@ -81,5 +85,4 @@ func main() {
 	//Wait for client shutdown
 	waitGroup.Wait()
 	log.Println("All clients shut down")
-
 }

@@ -9,21 +9,20 @@ import (
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/cloudwebrtc/go-protoo/peer"
 	"github.com/cloudwebrtc/go-protoo/transport"
+	"github.com/pion/ion/pkg/node/biz"
 	"github.com/pion/webrtc/v2"
 )
 
 type RoomClient struct {
 	pubPeerCon *webrtc.PeerConnection
 	wsPeer     *peer.Peer
-	room       RoomInfo
+	room       biz.RoomInfo
 	name       string
 	audioTrack *webrtc.Track
 	videoTrack *webrtc.Track
 	paused     bool
 	ionPath    string
 	ReadyChan  chan bool
-	Connected  bool
-	OnLogin    func(json.RawMessage)
 }
 
 func newPeerCon() *webrtc.PeerConnection {
@@ -45,7 +44,7 @@ func NewClient(name, room, path string) RoomClient {
 
 	return RoomClient{
 		pubPeerCon: pc,
-		room: RoomInfo{
+		room: biz.RoomInfo{
 			Uid: name,
 			Rid: room,
 		},
@@ -68,17 +67,11 @@ func (t *RoomClient) handleWebSocketOpen(transport *transport.WebSocketTransport
 		logger.Infof("peer close [%d] %s", code, err)
 	})
 
-	joinMsg := JoinMsg{RoomInfo: t.room, Info: UserInfo{Name: t.name}}
+	joinMsg := biz.JoinMsg{RoomInfo: t.room, Info: biz.UserInfo{Name: t.name}}
 	t.wsPeer.Request("join", joinMsg,
 		func(result json.RawMessage) {
 			logger.Infof("login success: =>  %s", result)
-			// Add media stream
-			// // t.publish()
-			// t.Connected = true
 			t.ReadyChan <- true
-			if t.OnLogin != nil {
-				t.OnLogin(result)
-			}
 		},
 		func(code int, err string) {
 			logger.Infof("login reject: %d => %s", code, err)
@@ -117,7 +110,7 @@ func (t *RoomClient) Publish() {
 	}
 	log.Println(offer)
 
-	pubMsg := PublishMsg{RoomInfo: t.room, Jsep: offer, Options: newPublishOptions()}
+	pubMsg := biz.PublishMsg{RoomInfo: t.room, Jsep: offer, Options: newPublishOptions()}
 
 	t.wsPeer.Request("publish", pubMsg, t.finalizeConnect,
 		func(code int, err string) {
@@ -128,7 +121,7 @@ func (t *RoomClient) Publish() {
 func (t *RoomClient) finalizeConnect(result json.RawMessage) {
 	logger.Infof("publish success: =>  %s", result)
 
-	var msg connectMsg
+	var msg biz.PublishResponseMsg
 	err := json.Unmarshal(result, &msg)
 	if err != nil {
 		log.Println(err)
