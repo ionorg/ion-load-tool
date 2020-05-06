@@ -23,6 +23,7 @@ type RoomClient struct {
 	paused     bool
 	ionPath    string
 	ReadyChan  chan bool
+	Client     *client.WebSocketClient
 }
 
 func newPeerCon() *webrtc.PeerConnection {
@@ -55,17 +56,14 @@ func NewClient(name, room, path string) RoomClient {
 }
 
 func (t *RoomClient) Init() {
-	wsClient := client.NewClient(t.ionPath+"?peer="+t.room.Uid, t.handleWebSocketOpen)
-	go wsClient.ReadMessage()
+	t.Client = client.NewClient(t.ionPath+"?peer="+t.room.Uid, t.handleWebSocketOpen)
+	// go wsClient.ReadMessage()
 }
 
 func (t *RoomClient) handleWebSocketOpen(transport *transport.WebSocketTransport) {
 	logger.Infof("handleWebSocketOpen")
 
 	t.wsPeer = peer.NewPeer(t.room.Uid, transport)
-	t.wsPeer.On("close", func(code int, err string) {
-		logger.Infof("peer close [%d] %s", code, err)
-	})
 
 	joinMsg := biz.JoinMsg{RoomInfo: t.room, Info: biz.UserInfo{Name: t.name}}
 	t.wsPeer.Request("join", joinMsg,
@@ -145,4 +143,9 @@ func (t *RoomClient) subcribe(mid string) {
 
 func (t *RoomClient) Leave() {
 
+}
+
+// Shutdown client and websocket transport
+func (t *RoomClient) Close() {
+	t.Client.Close()
 }

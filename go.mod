@@ -9,4 +9,6 @@ require (
 	github.com/pion/webrtc/v2 v2.2.8
 )
 
-replace github.com/pion/ion => github.com/jbrady42/ion v0.3.1
+replace github.com/pion/ion => github.com/jbrady42/ion v0.3.2
+
+replace github.com/cloudwebrtc/go-protoo => github.com/jbrady42/go-protoo v0.0.4

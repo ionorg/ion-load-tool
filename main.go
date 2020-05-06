@@ -16,7 +16,6 @@ import (
 
 var (
 	waitGroup sync.WaitGroup
-	doneChan  = make(chan interface{})
 )
 
 func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, mediaSource *producer.FileProducer) {
@@ -51,17 +50,19 @@ func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, medi
 	// Close client
 	client.Leave()
 
+	client.Close()
 }
 
-func newClient(name, room, path, vidFile string, index int) ion.RoomClient {
+func newClient(name, room, path, vidFile string, index int) (ion.RoomClient, chan interface{}) {
 	client := ion.NewClient(name, room, path)
+	doneChan := make(chan interface{})
 
 	mediaSource := producer.NewFileProducer(vidFile)
 	offset := index * 100
 	go mediaSource.ReadLoop(offset)
 
 	go runClient(client, index, doneChan, mediaSource)
-	return client
+	return client, doneChan
 }
 
 func main() {
@@ -80,24 +81,33 @@ func main() {
 		panic("-container-path must be specified")
 	}
 
+	clients := make([]chan interface{}, numClients)
+
 	for i := 0; i < numClients; i++ {
 		clientName := fmt.Sprintf("client_%v", i)
-		_ = newClient(clientName, roomName, ionPath, containerPath, i)
+		_, closeCh := newClient(clientName, roomName, ionPath, containerPath, i)
+		clients[i] = closeCh
+		time.Sleep(2 * time.Second)
 	}
 	waitGroup.Add(numClients)
 
 	// Setup shutdown
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	timer := time.NewTimer(5 * time.Minute)
+	timer := time.NewTimer(20 * time.Second)
 
 	select {
 	case <-sigs:
 	case <-timer.C:
 	}
 
-	// Signal shutdown
-	close(doneChan)
+	// Staggered shutdown.
+	// 10s per client shutdown
+	for _, a := range clients {
+		// Signal shutdown
+		close(a)
+		time.Sleep(10 * time.Second)
+	}
 
 	//Wait for client shutdown
 	waitGroup.Wait()
