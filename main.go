@@ -94,7 +94,7 @@ func main() {
 	// Setup shutdown
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	timer := time.NewTimer(20 * time.Second)
+	timer := time.NewTimer(1 * time.Minute)
 
 	select {
 	case <-sigs:
@@ -106,7 +106,7 @@ func main() {
 	for _, a := range clients {
 		// Signal shutdown
 		close(a)
-		time.Sleep(10 * time.Second)
+		time.Sleep(2 * time.Second)
 	}
 
 	//Wait for client shutdown

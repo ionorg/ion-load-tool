@@ -9,6 +9,7 @@ import (
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/cloudwebrtc/go-protoo/peer"
 	"github.com/cloudwebrtc/go-protoo/transport"
+	"github.com/google/uuid"
 	"github.com/pion/ion/pkg/node/biz"
 	"github.com/pion/webrtc/v2"
 )
@@ -42,11 +43,18 @@ func newPeerCon() *webrtc.PeerConnection {
 
 func NewClient(name, room, path string) RoomClient {
 	pc := newPeerCon()
+	uidStr := name
+	uuid, err := uuid.NewRandom()
+	if err != nil {
+		log.Println("Can't make new uuid??", err)
+	} else {
+		uidStr = uuid.String()
+	}
 
 	return RoomClient{
 		pubPeerCon: pc,
 		room: biz.RoomInfo{
-			Uid: name,
+			Uid: uidStr,
 			Rid: room,
 		},
 		name:      name,
