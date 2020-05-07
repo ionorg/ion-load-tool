@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/jbrady42/ion-load/ion"
 	"github.com/jbrady42/ion-load/producer"
 )
@@ -18,6 +19,10 @@ var (
 	waitGroup sync.WaitGroup
 )
 
+func init() {
+	logger.SetLevel(logger.InfoLevel)
+}
+
 func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, mediaSource *producer.FileProducer) {
 	defer waitGroup.Done()
 
@@ -25,17 +30,12 @@ func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, medi
 	client.VideoTrack = mediaSource.Track
 
 	client.Init()
-
-	ready := <-client.ReadyChan
-	if !ready {
-		log.Println("Client initialization error")
-		return
-	}
+	client.Join()
 
 	// Start producer
 	client.Publish()
 
-	// Comfigure auto subscribe in room
+	// Configure auto subscribe in room
 
 	// Wire consumers
 
@@ -46,6 +46,9 @@ func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, medi
 	// Unsubscribe Consumers
 
 	// Unpublish producer
+	client.UnPublish()
+
+	// Close producer and sender
 
 	// Close client
 	client.Leave()
@@ -101,15 +104,16 @@ func main() {
 	case <-timer.C:
 	}
 
-	// Staggered shutdown.
-	// 10s per client shutdown
-	for _, a := range clients {
+	for i, a := range clients {
 		// Signal shutdown
 		close(a)
-		time.Sleep(2 * time.Second)
+		// Staggered shutdown.
+		if len(clients) > 1 && i < len(clients)-1 {
+			time.Sleep(10 * time.Second)
+		}
 	}
 
-	//Wait for client shutdown
+	log.Println("Wait for client shutdown")
 	waitGroup.Wait()
 	log.Println("All clients shut down")
 }

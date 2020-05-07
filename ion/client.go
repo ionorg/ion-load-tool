@@ -15,8 +15,9 @@ import (
 )
 
 type RoomClient struct {
+	biz.MediaInfo
 	pubPeerCon *webrtc.PeerConnection
-	wsPeer     *peer.Peer
+	WsPeer     *peer.Peer
 	room       biz.RoomInfo
 	name       string
 	AudioTrack *webrtc.Track
@@ -24,7 +25,7 @@ type RoomClient struct {
 	paused     bool
 	ionPath    string
 	ReadyChan  chan bool
-	Client     *client.WebSocketClient
+	client     *client.WebSocketClient
 }
 
 func newPeerCon() *webrtc.PeerConnection {
@@ -64,25 +65,38 @@ func NewClient(name, room, path string) RoomClient {
 }
 
 func (t *RoomClient) Init() {
-	t.Client = client.NewClient(t.ionPath+"?peer="+t.room.Uid, t.handleWebSocketOpen)
-	// go wsClient.ReadMessage()
+	t.client = client.NewClient(t.ionPath+"?peer="+t.room.Uid, t.handleWebSocketOpen)
 }
 
 func (t *RoomClient) handleWebSocketOpen(transport *transport.WebSocketTransport) {
 	logger.Infof("handleWebSocketOpen")
 
-	t.wsPeer = peer.NewPeer(t.room.Uid, transport)
+	t.WsPeer = peer.NewPeer(t.room.Uid, transport)
 
+	go func() {
+		for {
+			select {
+			case msg := <-t.WsPeer.OnNotification:
+				t.handleNotification(msg)
+			case msg := <-t.WsPeer.OnRequest:
+				log.Println("Got request", msg)
+			case msg := <-t.WsPeer.OnClose:
+				log.Println("Peer close msg", msg)
+			}
+		}
+	}()
+
+}
+
+func (t *RoomClient) Join() {
 	joinMsg := biz.JoinMsg{RoomInfo: t.room, Info: biz.UserInfo{Name: t.name}}
-	t.wsPeer.Request("join", joinMsg,
-		func(result json.RawMessage) {
-			logger.Infof("login success: =>  %s", result)
-			t.ReadyChan <- true
-		},
-		func(code int, err string) {
-			logger.Infof("login reject: %d => %s", code, err)
-			t.ReadyChan <- false
-		})
+	res := <-t.WsPeer.Request("join", joinMsg, nil, nil)
+
+	if res.Err != nil {
+		logger.Infof("login reject: %d => %s", res.Err.Code, res.Err.Text)
+	} else {
+		logger.Infof("login success: =>  %s", res.Result)
+	}
 }
 
 func (t *RoomClient) Publish() {
@@ -114,7 +128,6 @@ func (t *RoomClient) Publish() {
 	if err != nil {
 		panic(err)
 	}
-	log.Println(offer)
 
 	pubMsg := biz.PublishMsg{
 		RoomInfo: t.room,
@@ -122,14 +135,16 @@ func (t *RoomClient) Publish() {
 		Options:  newPublishOptions(),
 	}
 
-	t.wsPeer.Request("publish", pubMsg, t.finalizeConnect,
-		func(code int, err string) {
-			logger.Infof("publish reject: %d => %s", code, err)
-		})
+	res := <-t.WsPeer.Request("publish", pubMsg, nil, nil)
+	if res.Err != nil {
+		logger.Infof("publish reject: %d => %s", res.Err.Code, res.Err.Text)
+		return
+	}
+	t.finalizeConnect(res.Result)
 }
 
 func (t *RoomClient) finalizeConnect(result json.RawMessage) {
-	logger.Infof("publish success: =>  %s", result)
+	logger.Infof("publish success")
 
 	var msg biz.PublishResponseMsg
 	err := json.Unmarshal(result, &msg)
@@ -138,6 +153,8 @@ func (t *RoomClient) finalizeConnect(result json.RawMessage) {
 		return
 	}
 
+	t.MediaInfo = msg.MediaInfo
+
 	// Set the remote SessionDescription
 	err = t.pubPeerCon.SetRemoteDescription(msg.Jsep)
 	if err != nil {
@@ -145,8 +162,47 @@ func (t *RoomClient) finalizeConnect(result json.RawMessage) {
 	}
 }
 
+func (t *RoomClient) handleNotification(msg peer.Notification) {
+	switch msg.Method {
+	case "stream-add":
+		t.handleStreamAdd(msg.Data)
+	case "stream-remove":
+		t.handleStreamRemove(msg.Data)
+	}
+}
+
+func (t *RoomClient) handleStreamAdd(msg json.RawMessage) {
+	var msgData biz.StreamAddMsg
+	if err := json.Unmarshal(msg, &msgData); err != nil {
+		log.Println("Marshal error", err)
+		return
+	}
+	log.Println("New stream", msgData)
+}
+
+func (t *RoomClient) handleStreamRemove(msg json.RawMessage) {
+	var msgData biz.StreamRemoveMsg
+	if err := json.Unmarshal(msg, &msgData); err != nil {
+		log.Println("Marshal error", err)
+		return
+	}
+	log.Println("Remove stream", msgData)
+}
+
 func (t *RoomClient) subcribe(mid string) {
 
+}
+
+func (t *RoomClient) UnPublish() {
+	msg := biz.UnpublishMsg{
+		MediaInfo: t.MediaInfo,
+		RoomInfo:  t.room,
+	}
+	res := <-t.WsPeer.Request("unpublish", msg, nil, nil)
+	if res.Err != nil {
+		logger.Infof("unpublish reject: %d => %s", res.Err.Code, res.Err.Text)
+		return
+	}
 }
 
 func (t *RoomClient) Leave() {
@@ -155,5 +211,5 @@ func (t *RoomClient) Leave() {
 
 // Shutdown client and websocket transport
 func (t *RoomClient) Close() {
-	t.Client.Close()
+	t.client.Close()
 }

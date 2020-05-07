@@ -17,8 +17,6 @@ github.com/cheekybits/genny v1.0.0/go.mod h1:+tQajlRqAUrPI7DOSpB0XAqZYtQakVtB7wX
 github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9 h1:xz6Nv3zcwO2Lila35hcb0QloCQsc38Al13RNEzWRpX4=
 github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9/go.mod h1:2wSM9zJkl1UQEFZgSd68NfCgRz1VL1jzy/RjCg+ULrs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
-github.com/cloudwebrtc/go-protoo v0.0.0-20200503150352-84211f461572 h1:aNoSRlLqA7kmItRZrmz6DMSsBFjwSoJAXidWEfnyB6Y=
-github.com/cloudwebrtc/go-protoo v0.0.0-20200503150352-84211f461572/go.mod h1:Q0DiItmsD5iCBdeID9Xu03ok8bemc78XJ+0rYATQbuQ=
 github.com/cloudwebrtc/nats-protoo v0.0.0-20200328144814-d3c1c848d442 h1:jQwLu2qva1swuN+HcWSpr+SrJ/zPScQegf6gVG0fiok=
 github.com/cloudwebrtc/nats-protoo v0.0.0-20200328144814-d3c1c848d442/go.mod h1:GChOgYiUBBZTCzjSPbPCDIQCAtScaaJmvb41Vw83TLQ=
 github.com/coreos/bbolt v1.3.2 h1:wZwiHHUieZCquLkDL0B8UhzreNWsPHooDAG3q34zk0s=
@@ -82,14 +80,10 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
-github.com/jbrady42/go-protoo v0.0.4 h1:RMHeDirVHQJgmrC/ZNElCFDZa1BFoXkODW7lA/qjRu0=
-github.com/jbrady42/go-protoo v0.0.4/go.mod h1:Q0DiItmsD5iCBdeID9Xu03ok8bemc78XJ+0rYATQbuQ=
-github.com/jbrady42/go-protoo v0.0.5 h1:dX6vwNx9F0yyLX2v9CHekGXSovtDGwarA/BfUsQ0mZw=
-github.com/jbrady42/go-protoo v0.0.5/go.mod h1:Q0DiItmsD5iCBdeID9Xu03ok8bemc78XJ+0rYATQbuQ=
-github.com/jbrady42/ion v0.3.1 h1:0M3T1a9RwlDoR68r1J51g5u9iUc3lSabZfo9d02eGn8=
-github.com/jbrady42/ion v0.3.1/go.mod h1:vtiVQa7lAF8E0YiT21et1ziq33l0YOjNNJBkEYgp+ng=
-github.com/jbrady42/ion v0.3.2 h1:jBDNjtP7IHQ1fpA+dS6Yusud1y4Ej/1Whou/AC9YqW0=
-github.com/jbrady42/ion v0.3.2/go.mod h1:HuMUL/fcFDVj9Y7cvH4eMFyVM0HT0A50fONKp96ezP0=
+github.com/jbrady42/go-protoo v0.0.6 h1:5VPSTmbSpuPUTvwFn0XPIu5h8MVEQpHpfLDR9AgX/To=
+github.com/jbrady42/go-protoo v0.0.6/go.mod h1:Q0DiItmsD5iCBdeID9Xu03ok8bemc78XJ+0rYATQbuQ=
+github.com/jbrady42/ion v0.3.3 h1:clqDwJgsOl2NIGaJaB8jF0lKbRbZ45NgjR3h+mOOvSg=
+github.com/jbrady42/ion v0.3.3/go.mod h1:ntW7JWAUpEbzlZ4MT7apc+xYlRAkuemCqlQX4SAP4qY=
 github.com/jonboulle/clockwork v0.1.0 h1:VKV+ZcuP6l3yW9doeqz6ziZGgcynBVQO+obU0+0hcPo=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/json-iterator/go v1.1.9 h1:9yzud/Ht36ygwatGx56VwCZtlI/2AD15T1X2sjSuGns=
