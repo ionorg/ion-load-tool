@@ -2,7 +2,6 @@ package ion
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"github.com/cloudwebrtc/go-protoo/client"
@@ -23,6 +22,11 @@ var (
 	}
 )
 
+type Consumer struct {
+	Pc   *webrtc.PeerConnection
+	Info biz.MediaInfo
+}
+
 type RoomClient struct {
 	biz.MediaInfo
 	pubPeerCon *webrtc.PeerConnection
@@ -35,7 +39,7 @@ type RoomClient struct {
 	ionPath    string
 	ReadyChan  chan bool
 	client     *client.WebSocketClient
-	consumers  []Consumer
+	consumers  []*Consumer
 }
 
 func newPeerCon() *webrtc.PeerConnection {
@@ -67,7 +71,7 @@ func NewClient(name, room, path string) RoomClient {
 		name:      name,
 		ionPath:   path,
 		ReadyChan: make(chan bool),
-		consumers: make([]Consumer, 0),
+		consumers: make([]*Consumer, 0),
 	}
 }
 
@@ -121,7 +125,7 @@ func (t *RoomClient) Publish() {
 	}
 
 	t.pubPeerCon.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		fmt.Printf("Connection State has changed %s \n", connectionState.String())
+		log.Printf("Client %v producer State has changed %s \n", t.name, connectionState.String())
 	})
 
 	// Create an offer to send to the browser
@@ -190,6 +194,7 @@ func (t *RoomClient) handleStreamRemove(msg json.RawMessage) {
 		return
 	}
 	log.Println("Remove stream", msgData)
+	t.UnSubscribe(msgData.MediaInfo)
 }
 
 func (t *RoomClient) subcribe(mid string) {
@@ -206,12 +211,15 @@ func (t *RoomClient) UnPublish() {
 		logger.Infof("unpublish reject: %d => %s", res.Err.Code, res.Err.Text)
 		return
 	}
+
+	// Stop producer peer connection
+	t.pubPeerCon.Close()
 }
 
 func (t *RoomClient) Subscribe(info biz.MediaInfo) {
 	log.Println("Subscribing to ", info)
 	// Create peer connection
-	pc := newConsumerPeerCon()
+	pc := newConsumerPeerCon(t.name, len(t.consumers))
 	// Create an offer to send to the browser
 	offer, err := pc.CreateOffer(nil)
 	if err != nil {
@@ -250,15 +258,26 @@ func (t *RoomClient) Subscribe(info biz.MediaInfo) {
 	}
 
 	// Create consumer
-	consumer := Consumer{pc, info}
+	consumer := &Consumer{pc, info}
 	t.consumers = append(t.consumers, consumer)
 
 	log.Println("Subscribe complete")
 }
 
-func (t *RoomClient) UnSubscribe() {
+func (t *RoomClient) UnSubscribe(info biz.MediaInfo) {
 	// Send upsubscribe request
 	// Shut down peerConnection
+	var sub *Consumer
+	for _, a := range t.consumers {
+		if a.Info.Mid == info.Mid {
+			sub = a
+			break
+		}
+	}
+	if sub != nil && sub.Pc != nil {
+		log.Println("Closing subscription peerConnection")
+		sub.Pc.Close()
+	}
 }
 
 func (t *RoomClient) Leave() {
@@ -268,4 +287,9 @@ func (t *RoomClient) Leave() {
 // Shutdown client and websocket transport
 func (t *RoomClient) Close() {
 	t.client.Close()
+
+	// Close any remaining consumers
+	for _, sub := range t.consumers {
+		sub.Pc.Close()
+	}
 }

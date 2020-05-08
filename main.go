@@ -35,24 +35,16 @@ func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, medi
 	// Start producer
 	client.Publish()
 
-	// Configure auto subscribe in room
-
-	// Wire consumers
-
 	// Wait for the end of the test then shutdown
 	<-doneCh
 	log.Printf("Begin client %v shutdown", index)
 
-	// Unsubscribe Consumers
-
-	// Unpublish producer
-	client.UnPublish()
-
 	// Close producer and sender
+	mediaSource.Stop()
+	client.UnPublish()
 
 	// Close client
 	client.Leave()
-
 	client.Close()
 }
 
@@ -73,11 +65,13 @@ func main() {
 	var ionPath string
 	var roomName string
 	var numClients int
+	var runSeconds int
 
 	flag.StringVar(&containerPath, "container-path", "", "path to the media file you want to playback")
 	flag.StringVar(&ionPath, "ion-url", "ws://localhost:8443/ws", "websocket url for ion biz system")
 	flag.StringVar(&roomName, "room", "video-demo", "Room name for Ion")
 	flag.IntVar(&numClients, "clients", 1, "Number of clients to start")
+	flag.IntVar(&runSeconds, "seconds", 60, "Number of seconds to run test for")
 	flag.Parse()
 
 	if containerPath == "" {
@@ -97,7 +91,7 @@ func main() {
 	// Setup shutdown
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	timer := time.NewTimer(1 * time.Minute)
+	timer := time.NewTimer(runSeconds * time.Seconds)
 
 	select {
 	case <-sigs:

@@ -1,17 +1,10 @@
 package ion
 
 import (
-	"fmt"
 	"log"
 
-	"github.com/pion/ion/pkg/node/biz"
 	"github.com/pion/webrtc/v2"
 )
-
-type Consumer struct {
-	Pc   *webrtc.PeerConnection
-	Info biz.MediaInfo
-}
 
 func discardConsumeLoop(track *webrtc.Track) {
 	b := make([]byte, 1460)
@@ -26,7 +19,7 @@ func discardConsumeLoop(track *webrtc.Track) {
 	}
 }
 
-func newConsumerPeerCon() *webrtc.PeerConnection {
+func newConsumerPeerCon(clientId string, consumerId int) *webrtc.PeerConnection {
 	// Create a MediaEngine object to configure the supported codec
 	m := webrtc.MediaEngine{}
 
@@ -57,7 +50,7 @@ func newConsumerPeerCon() *webrtc.PeerConnection {
 	}
 
 	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		fmt.Printf("Consumer Connection State has changed %s \n", connectionState.String())
+		log.Printf("Client %v Consumer %d Connection State has changed %s \n", clientId, consumerId, connectionState.String())
 	})
 
 	peerConnection.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
