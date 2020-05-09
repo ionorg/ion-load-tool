@@ -22,6 +22,11 @@ var (
 	}
 )
 
+type ClientChans struct {
+	OnStreamAdd    chan biz.StreamAddMsg
+	OnStreamRemove chan biz.StreamRemoveMsg
+}
+
 type Consumer struct {
 	Pc   *webrtc.PeerConnection
 	Info biz.MediaInfo
@@ -29,6 +34,7 @@ type Consumer struct {
 
 type RoomClient struct {
 	biz.MediaInfo
+	ClientChans
 	pubPeerCon *webrtc.PeerConnection
 	WsPeer     *peer.Peer
 	room       biz.RoomInfo
@@ -63,6 +69,10 @@ func NewClient(name, room, path string) RoomClient {
 	}
 
 	return RoomClient{
+		ClientChans: ClientChans{
+			OnStreamAdd:    make(chan biz.StreamAddMsg, 100),
+			OnStreamRemove: make(chan biz.StreamRemoveMsg, 100),
+		},
 		pubPeerCon: pc,
 		room: biz.RoomInfo{
 			Uid: uidStr,
@@ -184,7 +194,7 @@ func (t *RoomClient) handleStreamAdd(msg json.RawMessage) {
 		return
 	}
 	log.Println("New stream", msgData)
-	go t.Subscribe(msgData.MediaInfo)
+	t.OnStreamAdd <- msgData
 }
 
 func (t *RoomClient) handleStreamRemove(msg json.RawMessage) {
@@ -194,7 +204,7 @@ func (t *RoomClient) handleStreamRemove(msg json.RawMessage) {
 		return
 	}
 	log.Println("Remove stream", msgData)
-	t.UnSubscribe(msgData.MediaInfo)
+	t.OnStreamRemove <- msgData
 }
 
 func (t *RoomClient) subcribe(mid string) {
