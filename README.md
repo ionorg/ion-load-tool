@@ -11,14 +11,41 @@ ffmpeg -i $INPUT_FILE -g 30 output.ivf
 See the [ffmpeg VP8 docs](https://trac.ffmpeg.org/wiki/Encode/VP8) for more encoding options
 
 ### Run
-`ion-load -container-path <encoded video>`
 
-Set client count with `-clients` default 1.
+`ion-load -clients <num clients>`
 
-### Status
 
-Opens requested number of clients in the provided room name.
+#### Producer
+
+Pass `-produce -container-path <encoded video>`
 
 Each client starts stream playback in an offset position from the last with a different track and SSRC ID to simulate independent content.
 
-No consuming is currently implemented, but the room can be viewed in the browser when using a limited number of clients.
+
+#### Consumers
+
+Pass `-consume`
+
+Each client subscribes to all published streams in the provided room. A basic consumer with simple out-of-order detection is implemented.
+
+
+### Test Configurations
+
+#### N to N fully connected
+
+Run both produce and consume on the same command
+
+`-produce -consume -container-file <file> -clients N`
+
+This creates N clients publishing a stream, each of which will subscribe to the other N-1 client streams.
+
+#### 1 to N fanout
+
+Run separate instances of the load tool.
+
+##### Producer
+
+`-produce -container-file <file> -clients 1`
+
+##### Consumer
+`-consume -clients N`
