@@ -16,73 +16,87 @@ import (
 )
 
 var (
-	waitGroup sync.WaitGroup
+	waitGroup      sync.WaitGroup
+	clientNameTmpl = "client_%v"
 )
 
 func init() {
 	logger.SetLevel(logger.InfoLevel)
 }
 
-func runClient(client ion.RoomClient, index int, doneCh <-chan interface{}, mediaSource *producer.FileProducer, consume bool) {
+type testRun struct {
+	client      ion.RoomClient
+	consume     bool
+	produce     bool
+	mediaSource *producer.FileProducer
+	doneCh      chan interface{}
+	index       int
+}
+
+func (t *testRun) runClient() {
 	defer waitGroup.Done()
 
-	// Configure sender tracks
-	client.VideoTrack = mediaSource.Track
-
-	client.Init()
-	client.Join()
+	t.client.Init()
+	t.client.Join()
 
 	// Start producer
-	client.Publish()
+	if t.produce {
+		t.client.Publish()
+	}
 
 	// Wire consumers
 	// Wait for the end of the test then shutdown
 	done := false
 	for !done {
 		select {
-		case msg := <-client.OnStreamAdd:
-			if consume {
-				client.Subscribe(msg.MediaInfo)
+		case msg := <-t.client.OnStreamAdd:
+			if t.consume {
+				t.client.Subscribe(msg.MediaInfo)
 			}
-		case msg := <-client.OnStreamRemove:
-			if consume {
-				client.UnSubscribe(msg.MediaInfo)
+		case msg := <-t.client.OnStreamRemove:
+			if t.consume {
+				t.client.UnSubscribe(msg.MediaInfo)
 			}
-		case <-doneCh:
+		case <-t.doneCh:
 			done = true
 			break
 		}
 	}
-	log.Printf("Begin client %v shutdown", index)
+	log.Printf("Begin client %v shutdown", t.index)
 
 	// Close producer and sender
-	mediaSource.Stop()
-	client.UnPublish()
+	if t.produce {
+		t.mediaSource.Stop()
+		t.client.UnPublish()
+	}
 
 	// Close client
-	client.Leave()
-	client.Close()
+	t.client.Leave()
+	t.client.Close()
 }
 
-func newClient(name, room, path, vidFile string, index int, consume bool) (ion.RoomClient, chan interface{}) {
-	client := ion.NewClient(name, room, path)
-	doneChan := make(chan interface{})
+func (t *testRun) setupClient(room, path, vidFile string) {
+	name := fmt.Sprintf(clientNameTmpl, t.index)
+	t.client = ion.NewClient(name, room, path)
+	t.doneCh = make(chan interface{})
 
-	mediaSource := producer.NewFileProducer(vidFile)
-	offset := index * 100
-	go mediaSource.ReadLoop(offset)
+	if t.produce {
+		// Configure sender tracks
+		t.mediaSource = producer.NewFileProducer(vidFile)
+		t.client.VideoTrack = t.mediaSource.Track
 
-	go runClient(client, index, doneChan, mediaSource, consume)
-	return client, doneChan
+		offset := t.index * 100
+		go t.mediaSource.ReadLoop(offset)
+	}
+
+	go t.runClient()
 }
 
 func main() {
 	var containerPath string
-	var ionPath string
-	var roomName string
-	var numClients int
-	var runSeconds int
-	var consume bool
+	var ionPath, roomName string
+	var numClients, runSeconds int
+	var consume, produce bool
 
 	flag.StringVar(&containerPath, "container-path", "", "path to the media file you want to playback")
 	flag.StringVar(&ionPath, "ion-url", "ws://localhost:8443/ws", "websocket url for ion biz system")
@@ -90,18 +104,20 @@ func main() {
 	flag.IntVar(&numClients, "clients", 1, "Number of clients to start")
 	flag.IntVar(&runSeconds, "seconds", 60, "Number of seconds to run test for")
 	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
+	flag.BoolVar(&produce, "produce", false, "Produce stream to room")
+
 	flag.Parse()
 
-	if containerPath == "" {
+	if produce && containerPath == "" {
 		panic("-container-path must be specified")
 	}
 
-	clients := make([]chan interface{}, numClients)
+	clients := make([]*testRun, numClients)
 
 	for i := 0; i < numClients; i++ {
-		clientName := fmt.Sprintf("client_%v", i)
-		_, closeCh := newClient(clientName, roomName, ionPath, containerPath, i, consume)
-		clients[i] = closeCh
+		cfg := &testRun{consume: consume, produce: produce, index: i}
+		cfg.setupClient(roomName, ionPath, containerPath)
+		clients[i] = cfg
 		time.Sleep(2 * time.Second)
 	}
 	waitGroup.Add(numClients)
@@ -118,10 +134,10 @@ func main() {
 
 	for i, a := range clients {
 		// Signal shutdown
-		close(a)
+		close(a.doneCh)
 		// Staggered shutdown.
 		if len(clients) > 1 && i < len(clients)-1 {
-			time.Sleep(10 * time.Second)
+			time.Sleep(2 * time.Second)
 		}
 	}
 

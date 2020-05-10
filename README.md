@@ -8,6 +8,7 @@ First encode your test file
 ```
 ffmpeg -i $INPUT_FILE -g 30 output.ivf
 ```
+See the [ffmpeg VP8 docs](https://trac.ffmpeg.org/wiki/Encode/VP8) for more encoding options
 
 ### Run
 `ion-load -container-path <encoded video>`
