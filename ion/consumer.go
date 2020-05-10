@@ -7,15 +7,20 @@ import (
 )
 
 func discardConsumeLoop(track *webrtc.Track) {
-	b := make([]byte, 1460)
+	var lastNum uint16
 	for {
 		// Discard packet
 		// Do nothing
-		_, err := track.Read(b)
+		packet, err := track.ReadRTP()
 		if err != nil {
 			log.Println("Error reading RTP packet", err)
 			return
 		}
+		seq := packet.Header.SequenceNumber
+		if seq != lastNum+1 {
+			log.Printf("Packet out of order! prev %d current %d", lastNum, seq)
+		}
+		lastNum = seq
 	}
 }
 
