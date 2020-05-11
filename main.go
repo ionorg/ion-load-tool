@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -75,7 +76,7 @@ func (t *testRun) runClient() {
 	t.client.Close()
 }
 
-func (t *testRun) setupClient(room, path, vidFile string) {
+func (t *testRun) setupClient(room, path, vidFile, fileType string) {
 	name := fmt.Sprintf(clientNameTmpl, t.index)
 	t.client = ion.NewClient(name, room, path)
 	t.doneCh = make(chan interface{})
@@ -83,7 +84,11 @@ func (t *testRun) setupClient(room, path, vidFile string) {
 	if t.produce {
 		// Configure sender tracks
 		offset := t.index * 5
-		t.mediaSource = producer.NewMFileProducer(vidFile, offset)
+		if fileType == "webm" {
+			t.mediaSource = producer.NewMFileProducer(vidFile, offset)
+		} else if fileType == "ivf" {
+			t.mediaSource = producer.NewIVFProducer(vidFile, offset)
+		}
 		t.client.VideoTrack = t.mediaSource.VideoTrack()
 		t.mediaSource.Start()
 	}
@@ -91,31 +96,55 @@ func (t *testRun) setupClient(room, path, vidFile string) {
 	go t.runClient()
 }
 
+func validateFile(name string) (string, bool) {
+	list := strings.Split(name, ".")
+	if len(list) < 2 {
+		return "", false
+	}
+	ext := strings.ToLower(list[len(list)-1])
+	var valid bool
+	// Validate is ivf|webm
+	for _, a := range []string{"ivf", "webm"} {
+		if a == ext {
+			valid = true
+		}
+	}
+
+	return ext, valid
+}
+
 func main() {
-	var containerPath string
+	var containerPath, containerType string
 	var ionPath, roomName string
 	var numClients, runSeconds int
 	var consume, produce bool
 
-	flag.StringVar(&containerPath, "container-path", "", "path to the media file you want to playback")
+	flag.StringVar(&containerPath, "produce", "", "path to the media file you want to playback")
 	flag.StringVar(&ionPath, "ion-url", "ws://localhost:8443/ws", "websocket url for ion biz system")
 	flag.StringVar(&roomName, "room", "video-demo", "Room name for Ion")
 	flag.IntVar(&numClients, "clients", 1, "Number of clients to start")
 	flag.IntVar(&runSeconds, "seconds", 60, "Number of seconds to run test for")
 	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
-	flag.BoolVar(&produce, "produce", false, "Produce stream to room")
 
 	flag.Parse()
 
-	if produce && containerPath == "" {
-		panic("-container-path must be specified")
+	produce = containerPath != ""
+
+	// Validate type
+	if produce {
+		ext, ok := validateFile(containerPath)
+		log.Println(ext)
+		if !ok {
+			panic("Only IVF and WEBM containers are supported.")
+		}
+		containerType = ext
 	}
 
 	clients := make([]*testRun, numClients)
 
 	for i := 0; i < numClients; i++ {
 		cfg := &testRun{consume: consume, produce: produce, index: i}
-		cfg.setupClient(roomName, ionPath, containerPath)
+		cfg.setupClient(roomName, ionPath, containerPath, containerType)
 		clients[i] = cfg
 		time.Sleep(2 * time.Second)
 	}
