@@ -28,7 +28,7 @@ type testRun struct {
 	client      ion.RoomClient
 	consume     bool
 	produce     bool
-	mediaSource *producer.FileProducer
+	mediaSource producer.IFileProducer
 	doneCh      chan interface{}
 	index       int
 }
@@ -82,11 +82,10 @@ func (t *testRun) setupClient(room, path, vidFile string) {
 
 	if t.produce {
 		// Configure sender tracks
-		t.mediaSource = producer.NewFileProducer(vidFile)
-		t.client.VideoTrack = t.mediaSource.Track
-
-		offset := t.index * 100
-		go t.mediaSource.ReadLoop(offset)
+		offset := t.index * 5
+		t.mediaSource = producer.NewMFileProducer(vidFile, offset)
+		t.client.VideoTrack = t.mediaSource.VideoTrack()
+		t.mediaSource.Start()
 	}
 
 	go t.runClient()
