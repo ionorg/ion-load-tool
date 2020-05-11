@@ -12,14 +12,15 @@ import (
 	"github.com/pion/webrtc/v2/pkg/media/ivfreader"
 )
 
-type FileProducer struct {
+type IVFProducer struct {
 	name    string
 	stop    bool
 	Samples chan media.Sample
 	Track   *webrtc.Track
+	offset  int
 }
 
-func NewFileProducer(name string) *FileProducer {
+func NewIVFProducer(name string, offset int) *IVFProducer {
 	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		log.Fatal(err)
@@ -31,18 +32,33 @@ func NewFileProducer(name string) *FileProducer {
 		panic(err)
 	}
 
-	return &FileProducer{
+	return &IVFProducer{
 		name:    name,
 		Samples: make(chan media.Sample),
 		Track:   videoTrack,
+		offset:  offset,
 	}
 }
 
-func (t *FileProducer) Stop() {
+func (t *IVFProducer) AudioTrack() *webrtc.Track {
+	return nil
+}
+
+func (t *IVFProducer) VideoTrack() *webrtc.Track {
+	return t.Track
+}
+
+func (t *IVFProducer) Stop() {
 	t.stop = true
 }
 
-func (t *FileProducer) ReadLoop(startSeekFrames int) {
+func (t *IVFProducer) Start() {
+	go t.ReadLoop()
+}
+
+func (t *IVFProducer) ReadLoop() {
+	startSeekFrames := t.offset * 30
+
 	file, err := os.Open(t.name)
 	if err != nil {
 		panic(err)
