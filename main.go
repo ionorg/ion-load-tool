@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/cloudwebrtc/go-protoo/logger"
-	"github.com/jbrady42/ion-load/ion"
-	"github.com/jbrady42/ion-load/producer"
+	"github.com/pion/ion-load-tool/ion"
+	"github.com/pion/ion-load-tool/producer"
 )
 
 var (
