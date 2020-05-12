@@ -17,6 +17,8 @@ github.com/cheekybits/genny v1.0.0/go.mod h1:+tQajlRqAUrPI7DOSpB0XAqZYtQakVtB7wX
 github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9 h1:xz6Nv3zcwO2Lila35hcb0QloCQsc38Al13RNEzWRpX4=
 github.com/chuckpreslar/emission v0.0.0-20170206194824-a7ddd980baf9/go.mod h1:2wSM9zJkl1UQEFZgSd68NfCgRz1VL1jzy/RjCg+ULrs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
+github.com/cloudwebrtc/go-protoo v0.0.0-20200510140124-cf4744e87257 h1:wFUOcfpZkIkTj3VLzzDGFkpXIkP7N/JOnliKLpCqjyY=
+github.com/cloudwebrtc/go-protoo v0.0.0-20200510140124-cf4744e87257/go.mod h1:Q0DiItmsD5iCBdeID9Xu03ok8bemc78XJ+0rYATQbuQ=
 github.com/cloudwebrtc/nats-protoo v0.0.0-20200328144814-d3c1c848d442 h1:jQwLu2qva1swuN+HcWSpr+SrJ/zPScQegf6gVG0fiok=
 github.com/cloudwebrtc/nats-protoo v0.0.0-20200328144814-d3c1c848d442/go.mod h1:GChOgYiUBBZTCzjSPbPCDIQCAtScaaJmvb41Vw83TLQ=
 github.com/coreos/bbolt v1.3.2 h1:wZwiHHUieZCquLkDL0B8UhzreNWsPHooDAG3q34zk0s=
@@ -84,10 +86,6 @@ github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/hashicorp/hcl v1.0.0/go.mod h1:E5yfLk+7swimpb2L/Alb/PJmXilQ/rhwaUYs4T20WEQ=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
-github.com/jbrady42/go-protoo v0.0.6 h1:5VPSTmbSpuPUTvwFn0XPIu5h8MVEQpHpfLDR9AgX/To=
-github.com/jbrady42/go-protoo v0.0.6/go.mod h1:Q0DiItmsD5iCBdeID9Xu03ok8bemc78XJ+0rYATQbuQ=
-github.com/jbrady42/ion v0.3.4 h1:X5UA8OQmP/XAjzU7CGUsLwes2vFabisgaRAeF7gOTQ8=
-github.com/jbrady42/ion v0.3.4/go.mod h1:ntW7JWAUpEbzlZ4MT7apc+xYlRAkuemCqlQX4SAP4qY=
 github.com/jonboulle/clockwork v0.1.0 h1:VKV+ZcuP6l3yW9doeqz6ziZGgcynBVQO+obU0+0hcPo=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/json-iterator/go v1.1.9 h1:9yzud/Ht36ygwatGx56VwCZtlI/2AD15T1X2sjSuGns=
@@ -151,6 +149,8 @@ github.com/pion/dtls/v2 v2.0.0/go.mod h1:VkY5VL2wtsQQOG60xQ4lkV5pdn0wwBBTzCfRJqX
 github.com/pion/ice v0.7.13/go.mod h1:U3ERMkJgkPMlBjzMe2XxIQPl6ZrfRHyENwGCBoFrWWk=
 github.com/pion/ice v0.7.14 h1:lin/tzVc562t0Qk62/JlfOMX/RWuUSq/YyXakH2HTTQ=
 github.com/pion/ice v0.7.14/go.mod h1:/Lz6jAUhsvXed7kNJImXtvVSgjtcdGKoZAZIYb9WEm0=
+github.com/pion/ion v0.3.2 h1:nQunxfbKw+hTqXobX8Zj17MId+PBZM/yWMl/01QGBFY=
+github.com/pion/ion v0.3.2/go.mod h1:w5g3wLtF0k2QKUHjJH4q0B3BIrW3WzGrIlSz1Z0Jfm4=
 github.com/pion/logging v0.2.2 h1:M9+AIj/+pxNsDfAT64+MAVgJO0rsyLnoJKCqf//DoeY=
 github.com/pion/logging v0.2.2/go.mod h1:k0/tDVsRCX2Mb2ZEmTqNa7CWsQPc+YYCB7Q+5pahoms=
 github.com/pion/mdns v0.0.4 h1:O4vvVqr4DGX63vzmO6Fw9vpy3lfztVWHGCQfyw0ZLSY=
