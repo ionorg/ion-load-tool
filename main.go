@@ -118,11 +118,13 @@ func main() {
 	var ionPath, roomName string
 	var numClients, runSeconds int
 	var consume, produce bool
+	var staggerSeconds float64
 
 	flag.StringVar(&containerPath, "produce", "", "path to the media file you want to playback")
 	flag.StringVar(&ionPath, "ion-url", "ws://localhost:8443/ws", "websocket url for ion biz system")
 	flag.StringVar(&roomName, "room", "video-demo", "Room name for Ion")
 	flag.IntVar(&numClients, "clients", 1, "Number of clients to start")
+	flag.Float64Var(&staggerSeconds, "stagger", 1.0, "Number of seconds to stagger client start and stop")
 	flag.IntVar(&runSeconds, "seconds", 60, "Number of seconds to run test for")
 	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
 
@@ -141,14 +143,15 @@ func main() {
 	}
 
 	clients := make([]*testRun, numClients)
+	staggerDur := time.Duration(staggerSeconds) * time.Second
+	waitGroup.Add(numClients)
 
 	for i := 0; i < numClients; i++ {
 		cfg := &testRun{consume: consume, produce: produce, index: i}
 		cfg.setupClient(roomName, ionPath, containerPath, containerType)
 		clients[i] = cfg
-		time.Sleep(2 * time.Second)
+		time.Sleep(staggerDur)
 	}
-	waitGroup.Add(numClients)
 
 	// Setup shutdown
 	sigs := make(chan os.Signal, 1)
@@ -165,7 +168,7 @@ func main() {
 		close(a.doneCh)
 		// Staggered shutdown.
 		if len(clients) > 1 && i < len(clients)-1 {
-			time.Sleep(2 * time.Second)
+			time.Sleep(staggerDur)
 		}
 	}
 
