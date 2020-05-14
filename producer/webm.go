@@ -38,7 +38,7 @@ func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
 	}
 
 	if ts.Audio {
-		audioTrack, err = pc.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "video", "video")
+		audioTrack, err = pc.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "video")
 		if err != nil {
 			panic(err)
 		}
@@ -81,18 +81,28 @@ func (t *WebMProducer) Start() {
 	go t.readLoop()
 }
 
-func (t *WebMProducer) buildTracks() map[uint]*webrtc.Track {
-	trackMap := make(map[uint]*webrtc.Track)
+type trackInfo struct {
+	track     *webrtc.Track
+	rate      int
+	lastFrame time.Duration
+}
+
+func (t *WebMProducer) buildTracks() map[uint]*trackInfo {
+	trackMap := make(map[uint]*trackInfo)
 
 	if t.videoTrack != nil {
 		if vidTrack := t.webm.FindFirstVideoTrack(); vidTrack != nil {
-			trackMap[vidTrack.TrackNumber] = t.videoTrack
+			trackMap[vidTrack.TrackNumber] = &trackInfo{track: t.videoTrack, rate: 90000}
 		}
 	}
 
 	if t.audioTrack != nil {
 		if audTrack := t.webm.FindFirstAudioTrack(); audTrack != nil {
-			trackMap[audTrack.TrackNumber] = t.audioTrack
+			trackMap[audTrack.TrackNumber] = &trackInfo{
+				track: t.audioTrack,
+				rate:  int(audTrack.Audio.OutputSamplingFrequency),
+			}
+			log.Println(audTrack)
 		}
 	}
 
@@ -133,7 +143,14 @@ func (t *WebMProducer) readLoop() {
 		}
 
 		if track, ok := trackMap[pck.TrackNumber]; ok {
-			if ivfErr := track.WriteSample(media.Sample{Data: pck.Data, Samples: 1}); ivfErr != nil {
+			// Calc frame time diff per track
+			diff := pck.Timecode - track.lastFrame
+			ms := float64(diff.Milliseconds()) / 1000.0
+			samps := uint32(float64(track.rate) * ms)
+			track.lastFrame = pck.Timecode
+
+			// Send samples
+			if ivfErr := track.track.WriteSample(media.Sample{Data: pck.Data, Samples: samps}); ivfErr != nil {
 				log.Println("Track write error", ivfErr)
 			}
 		}

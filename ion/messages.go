@@ -9,7 +9,7 @@ func newPublishOptions() biz.PublishOptions {
 		Codec:      "VP8",
 		Resolution: "hd",
 		Bandwidth:  1024,
-		Audio:      false,
+		Audio:      true,
 		Video:      true,
 		Screen:     false,
 	}

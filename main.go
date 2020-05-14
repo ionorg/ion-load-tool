@@ -86,13 +86,14 @@ func (t *testRun) setupClient(room, path, vidFile, fileType string) {
 		offset := t.index * 5
 		if fileType == "webm" {
 			t.mediaSource = producer.NewMFileProducer(vidFile, offset, producer.TrackSelect{
-				Audio: false,
+				Audio: true,
 				Video: true,
 			})
 		} else if fileType == "ivf" {
 			t.mediaSource = producer.NewIVFProducer(vidFile, offset)
 		}
 		t.client.VideoTrack = t.mediaSource.VideoTrack()
+		t.client.AudioTrack = t.mediaSource.AudioTrack()
 		t.mediaSource.Start()
 	}
 
