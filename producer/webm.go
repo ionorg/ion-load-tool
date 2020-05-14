@@ -11,13 +11,6 @@ import (
 	"github.com/pion/webrtc/v2/pkg/media"
 )
 
-type IFileProducer interface {
-	VideoTrack() *webrtc.Track
-	AudioTrack() *webrtc.Track
-	Stop()
-	Start()
-}
-
 type WebMProducer struct {
 	name          string
 	stop          bool
@@ -28,21 +21,27 @@ type WebMProducer struct {
 	webm          webm.WebM
 }
 
-func NewMFileProducer(name string, offset int) *WebMProducer {
+func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
 	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	var videoTrack, audioTrack *webrtc.Track
+
 	// Create track
-	videoTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeVP8, rand.Uint32(), "video", "video")
-	if err != nil {
-		panic(err)
+	if ts.Video {
+		videoTrack, err = pc.NewTrack(webrtc.DefaultPayloadTypeVP8, rand.Uint32(), "video", "video")
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	audioTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "video", "video")
-	if err != nil {
-		panic(err)
+	if ts.Audio {
+		audioTrack, err = pc.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "video", "video")
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	r, err := os.Open(name)
@@ -79,21 +78,40 @@ func (t *WebMProducer) Stop() {
 }
 
 func (t *WebMProducer) Start() {
-	go t.ReadLoop()
+	go t.readLoop()
 }
 
-func (t *WebMProducer) ReadLoop() {
+func (t *WebMProducer) buildTracks() map[uint]*webrtc.Track {
+	trackMap := make(map[uint]*webrtc.Track)
+
+	if t.videoTrack != nil {
+		if vidTrack := t.webm.FindFirstVideoTrack(); vidTrack != nil {
+			trackMap[vidTrack.TrackNumber] = t.videoTrack
+		}
+	}
+
+	if t.audioTrack != nil {
+		if audTrack := t.webm.FindFirstAudioTrack(); audTrack != nil {
+			trackMap[audTrack.TrackNumber] = t.audioTrack
+		}
+	}
+
+	return trackMap
+}
+
+func (t *WebMProducer) readLoop() {
 	startDuration := time.Duration(t.offsetSeconds)
 	skipDuration := startDuration * time.Second
 
-	vidTrack := t.webm.FindFirstVideoTrack()
-	vidNum := vidTrack.TrackNumber
+	trackMap := t.buildTracks()
 
 	setStartTime := func() time.Time {
 		return time.Now().Add(-startDuration * time.Second)
 	}
 	startTime := setStartTime()
 	first := true
+
+	timeEps := 5 * time.Millisecond
 
 	for pck := range t.reader.Chan {
 		if pck.Timecode < 0 {
@@ -110,19 +128,15 @@ func (t *WebMProducer) ReadLoop() {
 		}
 
 		timeDiff := pck.Timecode - time.Since(startTime)
-		// TODO if less than some min just send now
-		if timeDiff > 0 {
-			time.Sleep(timeDiff)
+		if timeDiff > timeEps {
+			time.Sleep(timeDiff - time.Millisecond)
 		}
 
-		// TODO send audio tracks
-		// GET if from first of each
-		if pck.TrackNumber == vidNum {
-			if ivfErr := t.videoTrack.WriteSample(media.Sample{Data: pck.Data, Samples: 1}); ivfErr != nil {
+		if track, ok := trackMap[pck.TrackNumber]; ok {
+			if ivfErr := track.WriteSample(media.Sample{Data: pck.Data, Samples: 1}); ivfErr != nil {
 				log.Println("Track write error", ivfErr)
 			}
 		}
-
 	}
 	log.Println("Exiting webm producer")
 }
