@@ -14,7 +14,7 @@ See the [ffmpeg VP8 docs](https://trac.ffmpeg.org/wiki/Encode/VP8) for more enco
 
 ### Run
 
-`ion-load -clients <num clients>`
+`ion-load-tool -clients <num clients>`
 
 
 #### Producer
