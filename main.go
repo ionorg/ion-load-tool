@@ -42,7 +42,7 @@ func (t *testRun) runClient() {
 
 	// Start producer
 	if t.produce {
-		t.client.Publish()
+		t.client.Publish(t.mediaSource.VideoCodec())
 	}
 
 	// Wire consumers

@@ -9,6 +9,7 @@ type TrackSelect struct {
 
 type IFileProducer interface {
 	VideoTrack() *webrtc.Track
+	VideoCodec() string
 	AudioTrack() *webrtc.Track
 	Stop()
 	Start()

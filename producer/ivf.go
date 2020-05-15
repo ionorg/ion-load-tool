@@ -56,6 +56,10 @@ func (t *IVFProducer) Start() {
 	go t.ReadLoop()
 }
 
+func (t *IVFProducer) VideoCodec() string {
+	return "VP8"
+}
+
 func (t *IVFProducer) ReadLoop() {
 	startSeekFrames := t.offset * 30
 

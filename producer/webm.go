@@ -19,31 +19,12 @@ type WebMProducer struct {
 	offsetSeconds int
 	reader        *webm.Reader
 	webm          webm.WebM
+	trackMap      map[uint]*trackInfo
+	videoCodec    string
+	file          *os.File
 }
 
 func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
-	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var videoTrack, audioTrack *webrtc.Track
-
-	// Create track
-	if ts.Video {
-		videoTrack, err = pc.NewTrack(webrtc.DefaultPayloadTypeVP8, rand.Uint32(), "video", "video")
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if ts.Audio {
-		audioTrack, err = pc.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "video")
-		if err != nil {
-			panic(err)
-		}
-	}
-
 	r, err := os.Open(name)
 	if err != nil {
 		log.Fatal("unable to open file", name)
@@ -54,14 +35,17 @@ func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
 		panic(err)
 	}
 
-	return &WebMProducer{
+	fileReader := &WebMProducer{
 		name:          name,
-		videoTrack:    videoTrack,
-		audioTrack:    audioTrack,
 		offsetSeconds: offset,
 		reader:        reader,
 		webm:          w,
+		file:          r,
 	}
+
+	fileReader.buildTracks(ts)
+
+	return fileReader
 }
 
 func (t *WebMProducer) AudioTrack() *webrtc.Track {
@@ -75,10 +59,15 @@ func (t *WebMProducer) VideoTrack() *webrtc.Track {
 func (t *WebMProducer) Stop() {
 	t.stop = true
 	t.reader.Shutdown()
+	t.file.Close()
 }
 
 func (t *WebMProducer) Start() {
 	go t.readLoop()
+}
+
+func (t *WebMProducer) VideoCodec() string {
+	return t.videoCodec
 }
 
 type trackInfo struct {
@@ -87,32 +76,61 @@ type trackInfo struct {
 	lastFrame time.Duration
 }
 
-func (t *WebMProducer) buildTracks() map[uint]*trackInfo {
+func (t *WebMProducer) buildTracks(ts TrackSelect) {
+	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	trackMap := make(map[uint]*trackInfo)
 
-	if t.videoTrack != nil {
+	if ts.Video {
 		if vidTrack := t.webm.FindFirstVideoTrack(); vidTrack != nil {
-			trackMap[vidTrack.TrackNumber] = &trackInfo{track: t.videoTrack, rate: 90000}
+			log.Println("Video codec", vidTrack.CodecID)
+
+			var vidCodedID uint8
+			switch vidTrack.CodecID {
+			case "V_VP8":
+				vidCodedID = webrtc.DefaultPayloadTypeVP8
+				t.videoCodec = "VP8"
+			case "V_VP9":
+				vidCodedID = webrtc.DefaultPayloadTypeVP9
+				t.videoCodec = "VP9"
+			default:
+				log.Fatal("Unsupported video codec", vidTrack.CodecID)
+			}
+
+			videoTrack, err := pc.NewTrack(vidCodedID, rand.Uint32(), "video", "video")
+			if err != nil {
+				panic(err)
+			}
+
+			trackMap[vidTrack.TrackNumber] = &trackInfo{track: videoTrack, rate: 90000}
+			t.videoTrack = videoTrack
 		}
 	}
 
-	if t.audioTrack != nil {
+	if ts.Audio {
 		if audTrack := t.webm.FindFirstAudioTrack(); audTrack != nil {
+			audioTrack, err := pc.NewTrack(webrtc.DefaultPayloadTypeOpus, rand.Uint32(), "audio", "video")
+			if err != nil {
+				panic(err)
+			}
+
 			trackMap[audTrack.TrackNumber] = &trackInfo{
-				track: t.audioTrack,
+				track: audioTrack,
 				rate:  int(audTrack.Audio.OutputSamplingFrequency),
 			}
+			t.audioTrack = audioTrack
 		}
 	}
 
-	return trackMap
+	t.trackMap = trackMap
 }
 
 func (t *WebMProducer) readLoop() {
 	startDuration := time.Duration(t.offsetSeconds)
 	skipDuration := startDuration * time.Second
-
-	trackMap := t.buildTracks()
 
 	setStartTime := func() time.Time {
 		return time.Now().Add(-startDuration * time.Second)
@@ -141,7 +159,7 @@ func (t *WebMProducer) readLoop() {
 			time.Sleep(timeDiff - time.Millisecond)
 		}
 
-		if track, ok := trackMap[pck.TrackNumber]; ok {
+		if track, ok := t.trackMap[pck.TrackNumber]; ok {
 			// Calc frame time diff per track
 			diff := pck.Timecode - track.lastFrame
 			ms := float64(diff.Milliseconds()) / 1000.0
