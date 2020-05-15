@@ -102,7 +102,6 @@ func (t *WebMProducer) buildTracks() map[uint]*trackInfo {
 				track: t.audioTrack,
 				rate:  int(audTrack.Audio.OutputSamplingFrequency),
 			}
-			log.Println(audTrack)
 		}
 	}
 

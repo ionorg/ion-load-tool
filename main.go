@@ -76,7 +76,7 @@ func (t *testRun) runClient() {
 	t.client.Close()
 }
 
-func (t *testRun) setupClient(room, path, vidFile, fileType string) {
+func (t *testRun) setupClient(room, path, vidFile, fileType string, audio bool) {
 	name := fmt.Sprintf(clientNameTmpl, t.index)
 	t.client = ion.NewClient(name, room, path)
 	t.doneCh = make(chan interface{})
@@ -86,14 +86,17 @@ func (t *testRun) setupClient(room, path, vidFile, fileType string) {
 		offset := t.index * 5
 		if fileType == "webm" {
 			t.mediaSource = producer.NewMFileProducer(vidFile, offset, producer.TrackSelect{
-				Audio: true,
+				Audio: audio,
 				Video: true,
 			})
 		} else if fileType == "ivf" {
+			audio = false
 			t.mediaSource = producer.NewIVFProducer(vidFile, offset)
 		}
 		t.client.VideoTrack = t.mediaSource.VideoTrack()
-		t.client.AudioTrack = t.mediaSource.AudioTrack()
+		if audio {
+			t.client.AudioTrack = t.mediaSource.AudioTrack()
+		}
 		t.mediaSource.Start()
 	}
 
@@ -123,6 +126,7 @@ func main() {
 	var numClients, runSeconds int
 	var consume, produce bool
 	var staggerSeconds float64
+	var audio bool
 
 	flag.StringVar(&containerPath, "produce", "", "path to the media file you want to playback")
 	flag.StringVar(&ionPath, "ion-url", "ws://localhost:8443/ws", "websocket url for ion biz system")
@@ -131,6 +135,7 @@ func main() {
 	flag.Float64Var(&staggerSeconds, "stagger", 1.0, "Number of seconds to stagger client start and stop")
 	flag.IntVar(&runSeconds, "seconds", 60, "Number of seconds to run test for")
 	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
+	flag.BoolVar(&audio, "audio", false, "Publish audio stream from webm file")
 
 	flag.Parse()
 
@@ -152,7 +157,7 @@ func main() {
 
 	for i := 0; i < numClients; i++ {
 		cfg := &testRun{consume: consume, produce: produce, index: i}
-		cfg.setupClient(roomName, ionPath, containerPath, containerType)
+		cfg.setupClient(roomName, ionPath, containerPath, containerType, audio)
 		clients[i] = cfg
 		time.Sleep(staggerDur)
 	}
