@@ -1,8 +1,13 @@
 ## Ion load testing tool
 
 ### Test Data
+Publishing of files in the following formats are supported.
 
-Playback of VP8 video stream from IVF or WEBM container file format is supported.
+|Container|Video Codecs|Audio|
+|---|---|---|
+IVF| VP8 | none
+WEBM| VP8 and VP9 | ogg
+
 
 
 If your data is not in this format you can transcode with:
@@ -10,7 +15,7 @@ If your data is not in this format you can transcode with:
 ffmpeg -i $INPUT_FILE -g 30 output.(ivf|webm)
 ```
 
-See the [ffmpeg VP8 docs](https://trac.ffmpeg.org/wiki/Encode/VP8) for more encoding options
+See the ffmpeg docs on [VP8](https://trac.ffmpeg.org/wiki/Encode/VP8) or [VP9](https://trac.ffmpeg.org/wiki/Encode/VP9) for encoding options
 
 ### Run
 

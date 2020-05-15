@@ -120,7 +120,8 @@ func (t *RoomClient) Join() {
 	}
 }
 
-func (t *RoomClient) Publish() {
+// TODO grab the codec from track
+func (t *RoomClient) Publish(codec string) {
 	if t.AudioTrack != nil {
 		if _, err := t.pubPeerCon.AddTrack(t.AudioTrack); err != nil {
 			log.Print(err)
@@ -153,7 +154,7 @@ func (t *RoomClient) Publish() {
 	pubMsg := biz.PublishMsg{
 		RoomInfo: t.room,
 		RTCInfo:  biz.RTCInfo{Jsep: offer},
-		Options:  newPublishOptions(),
+		Options:  newPublishOptions(codec),
 	}
 
 	res := <-t.WsPeer.Request(proto.ClientPublish, pubMsg, nil, nil)
