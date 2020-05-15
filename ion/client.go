@@ -25,6 +25,7 @@ var (
 type ClientChans struct {
 	OnStreamAdd    chan biz.StreamAddMsg
 	OnStreamRemove chan biz.StreamRemoveMsg
+	OnBroadcast    chan json.RawMessage
 }
 
 type Consumer struct {
@@ -72,6 +73,7 @@ func NewClient(name, room, path string) RoomClient {
 		ClientChans: ClientChans{
 			OnStreamAdd:    make(chan biz.StreamAddMsg, 100),
 			OnStreamRemove: make(chan biz.StreamRemoveMsg, 100),
+			OnBroadcast:    make(chan json.RawMessage, 100),
 		},
 		pubPeerCon: pc,
 		room: biz.RoomInfo{
@@ -181,10 +183,12 @@ func (t *RoomClient) Publish(codec string) {
 
 func (t *RoomClient) handleNotification(msg peer.Notification) {
 	switch msg.Method {
-	case "stream-add":
+	case proto.ClientOnStreamAdd:
 		t.handleStreamAdd(msg.Data)
-	case "stream-remove":
+	case proto.ClientOnStreamRemove:
 		t.handleStreamRemove(msg.Data)
+	case proto.ClientBroadcast:
+		t.OnBroadcast <- msg.Data
 	}
 }
 

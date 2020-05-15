@@ -1,6 +1,10 @@
 package producer
 
-import "github.com/pion/webrtc/v2"
+import (
+	"strings"
+
+	"github.com/pion/webrtc/v2"
+)
 
 type TrackSelect struct {
 	Audio bool
@@ -13,4 +17,27 @@ type IFileProducer interface {
 	AudioTrack() *webrtc.Track
 	Stop()
 	Start()
+}
+
+type IFilePlayer interface {
+	IFileProducer
+	SeekP(int64)
+	Pause(bool)
+}
+
+func ValidateVPFile(name string) (string, bool) {
+	list := strings.Split(name, ".")
+	if len(list) < 2 {
+		return "", false
+	}
+	ext := strings.ToLower(list[len(list)-1])
+	var valid bool
+	// Validate is ivf|webm
+	for _, a := range []string{"ivf", "webm"} {
+		if a == ext {
+			valid = true
+		}
+	}
+
+	return ext, valid
 }

@@ -66,6 +66,12 @@ func (t *WebMProducer) Start() {
 	go t.readLoop()
 }
 
+func (t *WebMProducer) SeekP(ts int64) {
+}
+
+func (t *WebMProducer) Pause(pause bool) {
+}
+
 func (t *WebMProducer) VideoCodec() string {
 	return t.videoCodec
 }

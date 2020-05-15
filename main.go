@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -58,6 +57,7 @@ func (t *testRun) runClient() {
 			if t.consume {
 				t.client.UnSubscribe(msg.MediaInfo)
 			}
+		case <-t.client.OnBroadcast:
 		case <-t.doneCh:
 			done = true
 			break
@@ -103,23 +103,6 @@ func (t *testRun) setupClient(room, path, vidFile, fileType string, audio bool) 
 	go t.runClient()
 }
 
-func validateFile(name string) (string, bool) {
-	list := strings.Split(name, ".")
-	if len(list) < 2 {
-		return "", false
-	}
-	ext := strings.ToLower(list[len(list)-1])
-	var valid bool
-	// Validate is ivf|webm
-	for _, a := range []string{"ivf", "webm"} {
-		if a == ext {
-			valid = true
-		}
-	}
-
-	return ext, valid
-}
-
 func main() {
 	var containerPath, containerType string
 	var ionPath, roomName string
@@ -143,7 +126,7 @@ func main() {
 
 	// Validate type
 	if produce {
-		ext, ok := validateFile(containerPath)
+		ext, ok := producer.ValidateVPFile(containerPath)
 		log.Println(ext)
 		if !ok {
 			panic("Only IVF and WEBM containers are supported.")

@@ -52,6 +52,12 @@ func (t *IVFProducer) Stop() {
 	t.stop = true
 }
 
+func (t *IVFProducer) SeekP(ts int64) {
+}
+
+func (t *IVFProducer) Pause(pause bool) {
+}
+
 func (t *IVFProducer) Start() {
 	go t.ReadLoop()
 }
