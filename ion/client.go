@@ -231,10 +231,25 @@ func (t *RoomClient) UnPublish() {
 	t.pubPeerCon.Close()
 }
 
-func (t *RoomClient) Subscribe(info biz.MediaInfo) {
+func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
+	info := subData.MediaInfo
 	log.Println("Subscribing to ", info)
+	id := len(t.consumers) // broken make better
 	// Create peer connection
-	pc := newConsumerPeerCon(t.name, len(t.consumers))
+	codec := ""
+	for _, trackList := range subData.Tracks {
+		if len(trackList) == 0 {
+			continue
+		}
+		track := trackList[0]
+		if track.Type == "video" {
+			codec = track.Codec
+			break
+		}
+	}
+	// Find codec of first video track
+
+	pc := newConsumerPeerCon(t.name, id, codec)
 	// Create an offer to send to the browser
 	offer, err := pc.CreateOffer(nil)
 	if err != nil {

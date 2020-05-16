@@ -41,6 +41,7 @@ func (t *testRun) runClient() {
 
 	// Start producer
 	if t.produce {
+		log.Println("Video codes is", t.mediaSource.VideoCodec())
 		t.client.Publish(t.mediaSource.VideoCodec())
 	}
 
@@ -51,7 +52,7 @@ func (t *testRun) runClient() {
 		select {
 		case msg := <-t.client.OnStreamAdd:
 			if t.consume {
-				t.client.Subscribe(msg.MediaInfo)
+				t.client.Subscribe(msg)
 			}
 		case msg := <-t.client.OnStreamRemove:
 			if t.consume {
