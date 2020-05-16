@@ -76,5 +76,5 @@ func (t *GSTProducer) Start() {
 }
 
 func (t *GSTProducer) VideoCodec() string {
-	return "H624"
+	return webrtc.H264
 }

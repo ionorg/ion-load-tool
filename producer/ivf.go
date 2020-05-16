@@ -63,7 +63,7 @@ func (t *IVFProducer) Start() {
 }
 
 func (t *IVFProducer) VideoCodec() string {
-	return "VP8"
+	return webrtc.VP8
 }
 
 func (t *IVFProducer) ReadLoop() {

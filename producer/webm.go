@@ -106,10 +106,10 @@ func (t *WebMProducer) buildTracks(ts TrackSelect) {
 			switch vidTrack.CodecID {
 			case "V_VP8":
 				vidCodedID = webrtc.DefaultPayloadTypeVP8
-				t.videoCodec = "VP8"
+				t.videoCodec = webrtc.VP8
 			case "V_VP9":
 				vidCodedID = webrtc.DefaultPayloadTypeVP9
-				t.videoCodec = "VP9"
+				t.videoCodec = webrtc.VP9
 			default:
 				log.Fatal("Unsupported video codec", vidTrack.CodecID)
 			}
