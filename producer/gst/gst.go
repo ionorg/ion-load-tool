@@ -1,4 +1,4 @@
-package producer
+package gst
 
 import (
 	"log"

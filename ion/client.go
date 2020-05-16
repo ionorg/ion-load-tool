@@ -235,8 +235,8 @@ func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
 	info := subData.MediaInfo
 	log.Println("Subscribing to ", info)
 	id := len(t.consumers) // broken make better
-	// Create peer connection
 	codec := ""
+	// Find codec of first video track
 	for _, trackList := range subData.Tracks {
 		if len(trackList) == 0 {
 			continue
@@ -247,8 +247,8 @@ func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
 			break
 		}
 	}
-	// Find codec of first video track
 
+	// Create peer connection
 	pc := newConsumerPeerCon(t.name, id, codec)
 	// Create an offer to send to the browser
 	offer, err := pc.CreateOffer(nil)

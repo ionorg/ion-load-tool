@@ -1,4 +1,4 @@
-package producer
+package webm
 
 import (
 	"log"
@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ebml-go/webm"
+	"github.com/pion/ion-load-tool/producer"
 	"github.com/pion/webrtc/v2"
 	"github.com/pion/webrtc/v2/pkg/media"
 )
@@ -28,7 +29,7 @@ type WebMProducer struct {
 	file          *os.File
 }
 
-func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
+func NewMFileProducer(name string, offset int, ts producer.TrackSelect) *WebMProducer {
 	r, err := os.Open(name)
 	if err != nil {
 		log.Fatal("unable to open file", name)
@@ -90,7 +91,7 @@ type trackInfo struct {
 	lastFrameTime time.Duration
 }
 
-func (t *WebMProducer) buildTracks(ts TrackSelect) {
+func (t *WebMProducer) buildTracks(ts producer.TrackSelect) {
 	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		log.Fatal(err)

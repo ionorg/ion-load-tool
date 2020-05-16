@@ -13,6 +13,8 @@ import (
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/pion/ion-load-tool/ion"
 	"github.com/pion/ion-load-tool/producer"
+	"github.com/pion/ion-load-tool/producer/ivf"
+	"github.com/pion/ion-load-tool/producer/webm"
 )
 
 var (
@@ -86,13 +88,13 @@ func (t *testRun) setupClient(room, path, vidFile, fileType string, audio bool) 
 		// Configure sender tracks
 		offset := t.index * 5
 		if fileType == "webm" {
-			t.mediaSource = producer.NewMFileProducer(vidFile, offset, producer.TrackSelect{
+			t.mediaSource = webm.NewMFileProducer(vidFile, offset, producer.TrackSelect{
 				Audio: audio,
 				Video: true,
 			})
 		} else if fileType == "ivf" {
 			audio = false
-			t.mediaSource = producer.NewIVFProducer(vidFile, offset)
+			t.mediaSource = ivf.NewIVFProducer(vidFile, offset)
 		}
 		t.client.VideoTrack = t.mediaSource.VideoTrack()
 		if audio {
