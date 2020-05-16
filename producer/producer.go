@@ -21,7 +21,7 @@ type IFileProducer interface {
 
 type IFilePlayer interface {
 	IFileProducer
-	SeekP(int64)
+	SeekP(int)
 	Pause(bool)
 }
 

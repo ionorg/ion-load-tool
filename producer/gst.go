@@ -56,14 +56,19 @@ func (t *GSTProducer) VideoTrack() *webrtc.Track {
 	return t.videoTrack
 }
 
-func (t *GSTProducer) SeekP(ts int64) {
+func (t *GSTProducer) SeekP(ts int) {
+	t.pipeline.SeekToTime(int64(ts))
 }
 
 func (t *GSTProducer) Pause(pause bool) {
+	if pause {
+		t.pipeline.Pause()
+	} else {
+		t.pipeline.Play()
+	}
 }
 
 func (t *GSTProducer) Stop() {
-	// t.pipeline.Stop()
 }
 
 func (t *GSTProducer) Start() {

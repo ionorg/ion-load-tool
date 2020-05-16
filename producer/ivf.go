@@ -52,7 +52,7 @@ func (t *IVFProducer) Stop() {
 	t.stop = true
 }
 
-func (t *IVFProducer) SeekP(ts int64) {
+func (t *IVFProducer) SeekP(ts int) {
 }
 
 func (t *IVFProducer) Pause(pause bool) {
