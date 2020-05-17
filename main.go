@@ -111,14 +111,14 @@ func main() {
 	var ionPath, roomName string
 	var numClients, runSeconds int
 	var consume, produce bool
-	var staggerSeconds float64
+	var staggerTime int
 	var audio bool
 
 	flag.StringVar(&containerPath, "produce", "", "path to the media file you want to playback")
 	flag.StringVar(&ionPath, "ion-url", "ws://localhost:8443/ws", "websocket url for ion biz system")
 	flag.StringVar(&roomName, "room", "video-demo", "Room name for Ion")
 	flag.IntVar(&numClients, "clients", 1, "Number of clients to start")
-	flag.Float64Var(&staggerSeconds, "stagger", 1.0, "Number of seconds to stagger client start and stop")
+	flag.IntVar(&staggerTime, "stagger", 1000, "Number of milliseconds to stagger client start and stop")
 	flag.IntVar(&runSeconds, "seconds", 60, "Number of seconds to run test for")
 	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
 	flag.BoolVar(&audio, "audio", false, "Publish audio stream from webm file")
@@ -138,7 +138,7 @@ func main() {
 	}
 
 	clients := make([]*testRun, numClients)
-	staggerDur := time.Duration(staggerSeconds) * time.Second
+	staggerDur := time.Duration(staggerTime) * time.Millisecond
 	waitGroup.Add(numClients)
 
 	for i := 0; i < numClients; i++ {
