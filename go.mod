@@ -8,7 +8,7 @@ require (
 	github.com/ebml-go/webm v0.0.0-20160924163542-629e38feef2a
 	github.com/google/uuid v1.1.1
 	github.com/petar/GoLLRB v0.0.0-20190514000832-33fb24c13b99 // indirect
-	github.com/pion/ion v0.3.2
+	github.com/pion/ion v0.3.3
 	github.com/pion/rtwatch v0.0.0-20200509080337-2120691d30bb
 	github.com/pion/webrtc/v2 v2.2.9
 )
