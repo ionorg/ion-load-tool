@@ -12,9 +12,9 @@ import (
 
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/pion/ion-load-tool/ion"
-	"github.com/pion/ion-load-tool/producer"
-	"github.com/pion/ion-load-tool/producer/ivf"
-	"github.com/pion/ion-load-tool/producer/webm"
+	"github.com/pion/producer"
+	"github.com/pion/producer/ivf"
+	"github.com/pion/producer/webm"
 )
 
 var (
@@ -138,7 +138,7 @@ func main() {
 	}
 
 	clients := make([]*testRun, numClients)
-	staggerDur := time.Duration(staggerSeconds) * time.Second
+	staggerDur := time.Duration(staggerSeconds*1000) * time.Millisecond
 	waitGroup.Add(numClients)
 
 	for i := 0; i < numClients; i++ {
