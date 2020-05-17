@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -14,6 +13,8 @@ import (
 	"github.com/cloudwebrtc/go-protoo/logger"
 	"github.com/pion/ion-load-tool/ion"
 	"github.com/pion/ion-load-tool/producer"
+	"github.com/pion/ion-load-tool/producer/ivf"
+	"github.com/pion/ion-load-tool/producer/webm"
 )
 
 var (
@@ -42,6 +43,7 @@ func (t *testRun) runClient() {
 
 	// Start producer
 	if t.produce {
+		log.Println("Video codes is", t.mediaSource.VideoCodec())
 		t.client.Publish(t.mediaSource.VideoCodec())
 	}
 
@@ -52,12 +54,13 @@ func (t *testRun) runClient() {
 		select {
 		case msg := <-t.client.OnStreamAdd:
 			if t.consume {
-				t.client.Subscribe(msg.MediaInfo)
+				t.client.Subscribe(msg)
 			}
 		case msg := <-t.client.OnStreamRemove:
 			if t.consume {
 				t.client.UnSubscribe(msg.MediaInfo)
 			}
+		case <-t.client.OnBroadcast:
 		case <-t.doneCh:
 			done = true
 			break
@@ -85,13 +88,13 @@ func (t *testRun) setupClient(room, path, vidFile, fileType string, audio bool) 
 		// Configure sender tracks
 		offset := t.index * 5
 		if fileType == "webm" {
-			t.mediaSource = producer.NewMFileProducer(vidFile, offset, producer.TrackSelect{
+			t.mediaSource = webm.NewMFileProducer(vidFile, offset, producer.TrackSelect{
 				Audio: audio,
 				Video: true,
 			})
 		} else if fileType == "ivf" {
 			audio = false
-			t.mediaSource = producer.NewIVFProducer(vidFile, offset)
+			t.mediaSource = ivf.NewIVFProducer(vidFile, offset)
 		}
 		t.client.VideoTrack = t.mediaSource.VideoTrack()
 		if audio {
@@ -101,23 +104,6 @@ func (t *testRun) setupClient(room, path, vidFile, fileType string, audio bool) 
 	}
 
 	go t.runClient()
-}
-
-func validateFile(name string) (string, bool) {
-	list := strings.Split(name, ".")
-	if len(list) < 2 {
-		return "", false
-	}
-	ext := strings.ToLower(list[len(list)-1])
-	var valid bool
-	// Validate is ivf|webm
-	for _, a := range []string{"ivf", "webm"} {
-		if a == ext {
-			valid = true
-		}
-	}
-
-	return ext, valid
 }
 
 func main() {
@@ -143,7 +129,7 @@ func main() {
 
 	// Validate type
 	if produce {
-		ext, ok := validateFile(containerPath)
+		ext, ok := producer.ValidateVPFile(containerPath)
 		log.Println(ext)
 		if !ok {
 			panic("Only IVF and WEBM containers are supported.")

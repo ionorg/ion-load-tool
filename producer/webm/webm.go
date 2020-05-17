@@ -1,12 +1,14 @@
-package producer
+package webm
 
 import (
 	"log"
+	"math"
 	"math/rand"
 	"os"
 	"time"
 
 	"github.com/ebml-go/webm"
+	"github.com/pion/ion-load-tool/producer"
 	"github.com/pion/webrtc/v2"
 	"github.com/pion/webrtc/v2/pkg/media"
 )
@@ -14,6 +16,9 @@ import (
 type WebMProducer struct {
 	name          string
 	stop          bool
+	paused        bool
+	pauseChan     chan bool
+	seekChan      chan time.Duration
 	videoTrack    *webrtc.Track
 	audioTrack    *webrtc.Track
 	offsetSeconds int
@@ -24,7 +29,7 @@ type WebMProducer struct {
 	file          *os.File
 }
 
-func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
+func NewMFileProducer(name string, offset int, ts producer.TrackSelect) *WebMProducer {
 	r, err := os.Open(name)
 	if err != nil {
 		log.Fatal("unable to open file", name)
@@ -41,6 +46,8 @@ func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
 		reader:        reader,
 		webm:          w,
 		file:          r,
+		pauseChan:     make(chan bool),
+		seekChan:      make(chan time.Duration, 1),
 	}
 
 	fileReader.buildTracks(ts)
@@ -59,11 +66,19 @@ func (t *WebMProducer) VideoTrack() *webrtc.Track {
 func (t *WebMProducer) Stop() {
 	t.stop = true
 	t.reader.Shutdown()
-	t.file.Close()
 }
 
 func (t *WebMProducer) Start() {
 	go t.readLoop()
+}
+
+func (t *WebMProducer) SeekP(ts int) {
+	seekDuration := time.Duration(ts) * time.Second
+	t.seekChan <- seekDuration
+}
+
+func (t *WebMProducer) Pause(pause bool) {
+	t.pauseChan <- pause
 }
 
 func (t *WebMProducer) VideoCodec() string {
@@ -71,12 +86,12 @@ func (t *WebMProducer) VideoCodec() string {
 }
 
 type trackInfo struct {
-	track     *webrtc.Track
-	rate      int
-	lastFrame time.Duration
+	track         *webrtc.Track
+	rate          int
+	lastFrameTime time.Duration
 }
 
-func (t *WebMProducer) buildTracks(ts TrackSelect) {
+func (t *WebMProducer) buildTracks(ts producer.TrackSelect) {
 	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		log.Fatal(err)
@@ -92,10 +107,10 @@ func (t *WebMProducer) buildTracks(ts TrackSelect) {
 			switch vidTrack.CodecID {
 			case "V_VP8":
 				vidCodedID = webrtc.DefaultPayloadTypeVP8
-				t.videoCodec = "VP8"
+				t.videoCodec = webrtc.VP8
 			case "V_VP9":
 				vidCodedID = webrtc.DefaultPayloadTypeVP9
-				t.videoCodec = "VP9"
+				t.videoCodec = webrtc.VP9
 			default:
 				log.Fatal("Unsupported video codec", vidTrack.CodecID)
 			}
@@ -129,42 +144,82 @@ func (t *WebMProducer) buildTracks(ts TrackSelect) {
 }
 
 func (t *WebMProducer) readLoop() {
-	startDuration := time.Duration(t.offsetSeconds)
-	skipDuration := startDuration * time.Second
-
-	setStartTime := func() time.Time {
-		return time.Now().Add(-startDuration * time.Second)
-	}
-	startTime := setStartTime()
-	first := true
-
+	startTime := time.Now()
 	timeEps := 5 * time.Millisecond
 
+	seekDuration := time.Duration(-1)
+
+	if t.offsetSeconds > 0 {
+		t.SeekP(t.offsetSeconds)
+	}
+
+	startSeek := func(seekTime time.Duration) {
+		t.reader.Seek(seekTime)
+		seekDuration = seekTime
+	}
+
 	for pck := range t.reader.Chan {
+		if t.paused {
+			log.Println("Paused")
+			// Wait for unpause
+			for pause := range t.pauseChan {
+				if !pause {
+					t.paused = false
+					break
+				}
+			}
+			log.Println("Unpaused")
+			startTime = time.Now().Add(-pck.Timecode)
+		}
+
+		// Restart when track runs out
 		if pck.Timecode < 0 {
 			if !t.stop {
 				log.Println("Restart media")
-				t.reader.Seek(0)
-				first = false
-				startTime = time.Now()
+				startSeek(0)
 			}
 			continue
-		} else if first && pck.Timecode < skipDuration {
-			startTime = setStartTime()
+		}
+
+		// Handle seek and pause
+		select {
+		case dur := <-t.seekChan:
+			log.Println("Seek duration", dur)
+			startSeek(dur)
+			continue
+		case pause := <-t.pauseChan:
+			t.paused = pause
+			if pause {
+				continue
+			}
+		default:
+		}
+
+		// Handle actual seek
+		if seekDuration > -1 && math.Abs(float64((pck.Timecode-seekDuration).Milliseconds())) < 30.0 {
+			log.Println("Seek happened!!!!")
+			startTime = time.Now().Add(-seekDuration)
+			seekDuration = time.Duration(-1)
+			// Clear frame count tracking
+			for _, t := range t.trackMap {
+				t.lastFrameTime = 0
+			}
 			continue
 		}
 
-		timeDiff := pck.Timecode - time.Since(startTime)
-		if timeDiff > timeEps {
-			time.Sleep(timeDiff - time.Millisecond)
-		}
-
+		// Find sender
 		if track, ok := t.trackMap[pck.TrackNumber]; ok {
+			// Only delay frames we care about
+			timeDiff := pck.Timecode - time.Since(startTime)
+			if timeDiff > timeEps {
+				time.Sleep(timeDiff - time.Millisecond)
+			}
+
 			// Calc frame time diff per track
-			diff := pck.Timecode - track.lastFrame
+			diff := pck.Timecode - track.lastFrameTime
 			ms := float64(diff.Milliseconds()) / 1000.0
 			samps := uint32(float64(track.rate) * ms)
-			track.lastFrame = pck.Timecode
+			track.lastFrameTime = pck.Timecode
 
 			// Send samples
 			if ivfErr := track.track.WriteSample(media.Sample{Data: pck.Data, Samples: samps}); ivfErr != nil {

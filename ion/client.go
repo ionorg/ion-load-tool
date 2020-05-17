@@ -25,6 +25,7 @@ var (
 type ClientChans struct {
 	OnStreamAdd    chan biz.StreamAddMsg
 	OnStreamRemove chan biz.StreamRemoveMsg
+	OnBroadcast    chan json.RawMessage
 }
 
 type Consumer struct {
@@ -72,6 +73,7 @@ func NewClient(name, room, path string) RoomClient {
 		ClientChans: ClientChans{
 			OnStreamAdd:    make(chan biz.StreamAddMsg, 100),
 			OnStreamRemove: make(chan biz.StreamRemoveMsg, 100),
+			OnBroadcast:    make(chan json.RawMessage, 100),
 		},
 		pubPeerCon: pc,
 		room: biz.RoomInfo{
@@ -181,10 +183,12 @@ func (t *RoomClient) Publish(codec string) {
 
 func (t *RoomClient) handleNotification(msg peer.Notification) {
 	switch msg.Method {
-	case "stream-add":
+	case proto.ClientOnStreamAdd:
 		t.handleStreamAdd(msg.Data)
-	case "stream-remove":
+	case proto.ClientOnStreamRemove:
 		t.handleStreamRemove(msg.Data)
+	case proto.ClientBroadcast:
+		t.OnBroadcast <- msg.Data
 	}
 }
 
@@ -227,10 +231,25 @@ func (t *RoomClient) UnPublish() {
 	t.pubPeerCon.Close()
 }
 
-func (t *RoomClient) Subscribe(info biz.MediaInfo) {
+func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
+	info := subData.MediaInfo
 	log.Println("Subscribing to ", info)
+	id := len(t.consumers) // broken make better
+	codec := ""
+	// Find codec of first video track
+	for _, trackList := range subData.Tracks {
+		if len(trackList) == 0 {
+			continue
+		}
+		track := trackList[0]
+		if track.Type == "video" {
+			codec = track.Codec
+			break
+		}
+	}
+
 	// Create peer connection
-	pc := newConsumerPeerCon(t.name, len(t.consumers))
+	pc := newConsumerPeerCon(t.name, id, codec)
 	// Create an offer to send to the browser
 	offer, err := pc.CreateOffer(nil)
 	if err != nil {

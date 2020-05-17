@@ -7,6 +7,7 @@ import (
 )
 
 func discardConsumeLoop(track *webrtc.Track) {
+	log.Println("Start discard consumer")
 	var lastNum uint16
 	for {
 		// Discard packet
@@ -24,14 +25,19 @@ func discardConsumeLoop(track *webrtc.Track) {
 	}
 }
 
-func newConsumerPeerCon(clientId string, consumerId int) *webrtc.PeerConnection {
+func newConsumerPeerCon(clientId string, consumerId int, codecType string) *webrtc.PeerConnection {
 	// Create a MediaEngine object to configure the supported codec
 	m := webrtc.MediaEngine{}
 
-	// Setup the codecs you want to use.
-	// We'll use a VP8 codec but you can also define your own
+	// TODO handle audio later
 	// m.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
-	m.RegisterCodec(webrtc.NewRTPVP8Codec(webrtc.DefaultPayloadTypeVP8, 90000))
+
+	switch codecType {
+	case "VP8":
+		m.RegisterCodec(webrtc.NewRTPVP8Codec(webrtc.DefaultPayloadTypeVP8, 90000))
+	case "VP9":
+		m.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
+	}
 
 	// Create the API object with the MediaEngine
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m))

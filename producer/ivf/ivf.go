@@ -1,4 +1,4 @@
-package producer
+package ivf
 
 import (
 	"io"
@@ -52,12 +52,18 @@ func (t *IVFProducer) Stop() {
 	t.stop = true
 }
 
+func (t *IVFProducer) SeekP(ts int) {
+}
+
+func (t *IVFProducer) Pause(pause bool) {
+}
+
 func (t *IVFProducer) Start() {
 	go t.ReadLoop()
 }
 
 func (t *IVFProducer) VideoCodec() string {
-	return "VP8"
+	return webrtc.VP8
 }
 
 func (t *IVFProducer) ReadLoop() {
