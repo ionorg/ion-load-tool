@@ -9,7 +9,6 @@ import (
 	"github.com/cloudwebrtc/go-protoo/peer"
 	"github.com/cloudwebrtc/go-protoo/transport"
 	"github.com/google/uuid"
-	"github.com/pion/ion/pkg/node/biz"
 	"github.com/pion/ion/pkg/proto"
 	"github.com/pion/webrtc/v2"
 )
@@ -23,22 +22,22 @@ var (
 )
 
 type ClientChans struct {
-	OnStreamAdd    chan biz.StreamAddMsg
-	OnStreamRemove chan biz.StreamRemoveMsg
+	OnStreamAdd    chan proto.StreamAddMsg
+	OnStreamRemove chan proto.StreamRemoveMsg
 	OnBroadcast    chan json.RawMessage
 }
 
 type Consumer struct {
 	Pc   *webrtc.PeerConnection
-	Info biz.MediaInfo
+	Info proto.MediaInfo
 }
 
 type RoomClient struct {
-	biz.MediaInfo
+	proto.MediaInfo
 	ClientChans
 	pubPeerCon *webrtc.PeerConnection
 	WsPeer     *peer.Peer
-	room       biz.RoomInfo
+	room       proto.RoomInfo
 	name       string
 	AudioTrack *webrtc.Track
 	VideoTrack *webrtc.Track
@@ -71,12 +70,12 @@ func NewClient(name, room, path string) RoomClient {
 
 	return RoomClient{
 		ClientChans: ClientChans{
-			OnStreamAdd:    make(chan biz.StreamAddMsg, 100),
-			OnStreamRemove: make(chan biz.StreamRemoveMsg, 100),
+			OnStreamAdd:    make(chan proto.StreamAddMsg, 100),
+			OnStreamRemove: make(chan proto.StreamRemoveMsg, 100),
 			OnBroadcast:    make(chan json.RawMessage, 100),
 		},
 		pubPeerCon: pc,
-		room: biz.RoomInfo{
+		room: proto.RoomInfo{
 			Uid: uidStr,
 			Rid: room,
 		},
@@ -112,7 +111,7 @@ func (t *RoomClient) handleWebSocketOpen(transport *transport.WebSocketTransport
 }
 
 func (t *RoomClient) Join() {
-	joinMsg := biz.JoinMsg{RoomInfo: t.room, Info: biz.UserInfo{Name: t.name}}
+	joinMsg := proto.JoinMsg{RoomInfo: t.room, Info: proto.ClientUserInfo{Name: t.name}}
 	res := <-t.WsPeer.Request(proto.ClientJoin, joinMsg, nil, nil)
 
 	if res.Err != nil {
@@ -153,9 +152,9 @@ func (t *RoomClient) Publish(codec string) {
 		panic(err)
 	}
 
-	pubMsg := biz.PublishMsg{
+	pubMsg := proto.PublishMsg{
 		RoomInfo: t.room,
-		RTCInfo:  biz.RTCInfo{Jsep: offer},
+		RTCInfo:  proto.RTCInfo{Jsep: offer},
 		Options:  newPublishOptions(codec),
 	}
 
@@ -165,7 +164,7 @@ func (t *RoomClient) Publish(codec string) {
 		return
 	}
 
-	var msg biz.PublishResponseMsg
+	var msg proto.PublishResponseMsg
 	err = json.Unmarshal(res.Result, &msg)
 	if err != nil {
 		log.Println(err)
@@ -193,7 +192,7 @@ func (t *RoomClient) handleNotification(msg peer.Notification) {
 }
 
 func (t *RoomClient) handleStreamAdd(msg json.RawMessage) {
-	var msgData biz.StreamAddMsg
+	var msgData proto.StreamAddMsg
 	if err := json.Unmarshal(msg, &msgData); err != nil {
 		log.Println("Marshal error", err)
 		return
@@ -203,7 +202,7 @@ func (t *RoomClient) handleStreamAdd(msg json.RawMessage) {
 }
 
 func (t *RoomClient) handleStreamRemove(msg json.RawMessage) {
-	var msgData biz.StreamRemoveMsg
+	var msgData proto.StreamRemoveMsg
 	if err := json.Unmarshal(msg, &msgData); err != nil {
 		log.Println("Marshal error", err)
 		return
@@ -217,10 +216,7 @@ func (t *RoomClient) subcribe(mid string) {
 }
 
 func (t *RoomClient) UnPublish() {
-	msg := biz.UnpublishMsg{
-		MediaInfo: t.MediaInfo,
-		RoomInfo:  t.room,
-	}
+	msg := proto.UnpublishMsg{MediaInfo: t.MediaInfo}
 	res := <-t.WsPeer.Request(proto.ClientUnPublish, msg, nil, nil)
 	if res.Err != nil {
 		logger.Infof("unpublish reject: %d => %s", res.Err.Code, res.Err.Text)
@@ -231,7 +227,7 @@ func (t *RoomClient) UnPublish() {
 	t.pubPeerCon.Close()
 }
 
-func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
+func (t *RoomClient) Subscribe(subData proto.StreamAddMsg) {
 	info := subData.MediaInfo
 	log.Println("Subscribing to ", info)
 	id := len(t.consumers) // broken make better
@@ -263,10 +259,9 @@ func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
 	}
 
 	// Send subscribe requestv
-	req := biz.SubscribeMsg{
+	req := proto.SubscribeMsg{
 		MediaInfo: info,
-		RoomInfo:  t.room,
-		RTCInfo:   biz.RTCInfo{Jsep: offer},
+		RTCInfo:   proto.RTCInfo{Jsep: offer},
 	}
 	res := <-t.WsPeer.Request(proto.ClientSubscribe, req, nil, nil)
 	if res.Err != nil {
@@ -274,7 +269,7 @@ func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
 		return
 	}
 
-	var msg biz.SubscribeResponseMsg
+	var msg proto.SubscribeResponseMsg
 	err = json.Unmarshal(res.Result, &msg)
 	if err != nil {
 		log.Println(err)
@@ -294,12 +289,12 @@ func (t *RoomClient) Subscribe(subData biz.StreamAddMsg) {
 	log.Println("Subscribe complete")
 }
 
-func (t *RoomClient) UnSubscribe(info biz.MediaInfo) {
+func (t *RoomClient) UnSubscribe(info proto.MediaInfo) {
 	// Send upsubscribe request
 	// Shut down peerConnection
 	var sub *Consumer
 	for _, a := range t.consumers {
-		if a.Info.Mid == info.Mid {
+		if a.Info.MID == info.MID {
 			sub = a
 			break
 		}
