@@ -25,24 +25,13 @@ func discardConsumeLoop(track *webrtc.Track) {
 	}
 }
 
-func newConsumerPeerCon(clientId string, consumerId int, codecType string) *webrtc.PeerConnection {
+func newConsumerPeerCon(clientId string, consumerId int) *webrtc.PeerConnection {
 	// Create a MediaEngine object to configure the supported codec
 	m := webrtc.MediaEngine{}
-
-	// TODO handle audio later
-	// m.RegisterCodec(webrtc.NewRTPOpusCodec(webrtc.DefaultPayloadTypeOpus, 48000))
-
-	switch codecType {
-	case "VP8":
-		m.RegisterCodec(webrtc.NewRTPVP8Codec(webrtc.DefaultPayloadTypeVP8, 90000))
-	case "VP9":
-		m.RegisterCodec(webrtc.NewRTPVP9Codec(webrtc.DefaultPayloadTypeVP9, 90000))
-	}
+	m.RegisterDefaultCodecs()
 
 	// Create the API object with the MediaEngine
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m))
-
-	// Everything below is the Pion WebRTC API! Thanks for using it ❤️.
 
 	// Prepare the configuration
 	config := webrtc.Configuration{
