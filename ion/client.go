@@ -1,16 +1,17 @@
 package ion
 
 import (
-	"encoding/json"
+	"context"
+	"io"
 	"log"
+	"path/filepath"
 
-	"github.com/cloudwebrtc/go-protoo/client"
-	"github.com/cloudwebrtc/go-protoo/logger"
-	"github.com/cloudwebrtc/go-protoo/peer"
-	"github.com/cloudwebrtc/go-protoo/transport"
-	"github.com/google/uuid"
-	"github.com/pion/ion/pkg/proto"
+	sfu "github.com/pion/ion-sfu/pkg/proto/sfu"
+	"github.com/pion/producer"
+	"github.com/pion/producer/ivf"
+	"github.com/pion/producer/webm"
 	"github.com/pion/webrtc/v2"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -21,231 +22,163 @@ var (
 	}
 )
 
-type ClientChans struct {
-	OnStreamAdd    chan proto.StreamAddMsg
-	OnStreamRemove chan proto.StreamRemoveMsg
-	OnBroadcast    chan json.RawMessage
-}
-
 type Consumer struct {
-	Pc   *webrtc.PeerConnection
-	Info proto.MediaInfo
+	Pc  *webrtc.PeerConnection
+	Mid string
 }
 
-type RoomClient struct {
-	proto.MediaInfo
-	ClientChans
-	pubPeerCon *webrtc.PeerConnection
-	WsPeer     *peer.Peer
-	room       proto.RoomInfo
+type LoadClient struct {
 	name       string
+	mid        string
+	pc         *webrtc.PeerConnection
 	AudioTrack *webrtc.Track
 	VideoTrack *webrtc.Track
-	paused     bool
-	ionPath    string
-	ReadyChan  chan bool
-	client     *client.WebSocketClient
+	conn       *grpc.ClientConn
+	c          sfu.SFUClient
 	consumers  []*Consumer
+	media      producer.IFileProducer
 }
 
-func newPeerCon() *webrtc.PeerConnection {
+func NewLoadClient(name, room, address, input string) *LoadClient {
+	log.Printf("Creating load client => name: %s room: %s input: %s", name, room, input)
+
+	// Set up a connection to the sfu server.
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	c := sfu.NewSFUClient(conn)
+
+	// Create peer connection
 	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{
 		ICEServers: IceServers,
 	})
+
 	if err != nil {
 		log.Fatal(err)
 	}
-	return pc
-}
 
-func NewClient(name, room, path string) RoomClient {
-	pc := newPeerCon()
-	uidStr := name
-	uuid, err := uuid.NewRandom()
-	if err != nil {
-		log.Println("Can't make new uuid??", err)
-	} else {
-		uidStr = uuid.String()
-	}
-
-	return RoomClient{
-		ClientChans: ClientChans{
-			OnStreamAdd:    make(chan proto.StreamAddMsg, 100),
-			OnStreamRemove: make(chan proto.StreamRemoveMsg, 100),
-			OnBroadcast:    make(chan json.RawMessage, 100),
-		},
-		pubPeerCon: pc,
-		room: proto.RoomInfo{
-			Uid: uidStr,
-			Rid: room,
-		},
+	lc := LoadClient{
 		name:      name,
-		ionPath:   path,
-		ReadyChan: make(chan bool),
+		conn:      conn,
+		c:         c,
+		pc:        pc,
 		consumers: make([]*Consumer, 0),
 	}
-}
 
-func (t *RoomClient) Init() {
-	t.client = client.NewClient(t.ionPath+"?peer="+t.room.Uid, t.handleWebSocketOpen)
-}
-
-func (t *RoomClient) handleWebSocketOpen(transport *transport.WebSocketTransport) {
-	logger.Infof("handleWebSocketOpen")
-
-	t.WsPeer = peer.NewPeer(t.room.Uid, transport)
-
-	go func() {
-		for {
-			select {
-			case msg := <-t.WsPeer.OnNotification:
-				t.handleNotification(msg)
-			case msg := <-t.WsPeer.OnRequest:
-				log.Println("Got request", msg)
-			case msg := <-t.WsPeer.OnClose:
-				log.Println("Peer close msg", msg)
-			}
+	if input != "" {
+		ext := filepath.Ext(input)
+		if ext == ".webm" {
+			lc.media = webm.NewMFileProducer(input, 0, producer.TrackSelect{
+				Audio: true,
+				Video: true,
+			})
+		} else if ext == ".ivf" {
+			lc.media = ivf.NewIVFProducer(input, 1)
+			lc.media.Start()
+		} else {
+			panic("unsupported input type")
 		}
-	}()
-
-}
-
-func (t *RoomClient) Join() {
-	joinMsg := proto.JoinMsg{RoomInfo: t.room, Info: proto.ClientUserInfo{Name: t.name}}
-	res := <-t.WsPeer.Request(proto.ClientJoin, joinMsg, nil, nil)
-
-	if res.Err != nil {
-		logger.Infof("login reject: %d => %s", res.Err.Code, res.Err.Text)
-	} else {
-		logger.Infof("login success: =>  %s", res.Result)
 	}
+
+	return &lc
 }
 
-// TODO grab the codec from track
-func (t *RoomClient) Publish(codec string) {
-	if t.AudioTrack != nil {
-		if _, err := t.pubPeerCon.AddTrack(t.AudioTrack); err != nil {
+func (lc *LoadClient) Publish() string {
+	log.Printf("Publishing stream for client: %s", lc.name)
+	if lc.media.AudioTrack() != nil {
+		if _, err := lc.pc.AddTrack(lc.media.AudioTrack()); err != nil {
 			log.Print(err)
 			panic(err)
 		}
+
 	}
-	if t.VideoTrack != nil {
-		if _, err := t.pubPeerCon.AddTrack(t.VideoTrack); err != nil {
+
+	if lc.media.VideoTrack() != nil {
+		if _, err := lc.pc.AddTrack(lc.media.VideoTrack()); err != nil {
 			log.Print(err)
 			panic(err)
 		}
 	}
 
-	t.pubPeerCon.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		log.Printf("Client %v producer State has changed %s \n", t.name, connectionState.String())
+	lc.pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		log.Printf("Client %v producer State has changed %s \n", lc.name, connectionState.String())
 	})
 
 	// Create an offer to send to the browser
-	offer, err := t.pubPeerCon.CreateOffer(nil)
+	offer, err := lc.pc.CreateOffer(nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// Sets the LocalDescription, and starts our UDP listeners
-	err = t.pubPeerCon.SetLocalDescription(offer)
+	err = lc.pc.SetLocalDescription(offer)
 	if err != nil {
 		panic(err)
 	}
 
-	pubMsg := proto.PublishMsg{
-		RoomInfo: t.room,
-		RTCInfo:  proto.RTCInfo{Jsep: offer},
-		Options:  newPublishOptions(codec),
-	}
+	lc.media.Start()
 
-	res := <-t.WsPeer.Request(proto.ClientPublish, pubMsg, nil, nil)
-	if res.Err != nil {
-		logger.Infof("publish reject: %d => %s", res.Err.Code, res.Err.Text)
-		return
-	}
+	ctx := context.Background()
+	stream, err := lc.c.Publish(ctx, &sfu.PublishRequest{
+		Rid: "default",
+		Options: &sfu.PublishOptions{
+			Codec: "VP8",
+		},
+		Description: &sfu.SessionDescription{
+			Type: offer.Type.String(),
+			Sdp:  offer.SDP,
+		},
+	})
 
-	var msg proto.PublishResponseMsg
-	err = json.Unmarshal(res.Result, &msg)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Printf("Error publishing stream: %v", err)
+		return ""
 	}
 
-	t.MediaInfo = msg.MediaInfo
+	answer, err := stream.Recv()
+	if err != nil {
+		log.Fatalf("Error receving publish response: %v", err)
+	}
 
 	// Set the remote SessionDescription
-	err = t.pubPeerCon.SetRemoteDescription(msg.Jsep)
-	if err != nil {
+	if err = lc.pc.SetRemoteDescription(webrtc.SessionDescription{
+		Type: webrtc.SDPTypeAnswer,
+		SDP:  answer.Description.Sdp,
+	}); err != nil {
 		panic(err)
 	}
+
+	go func() {
+		answer, err = stream.Recv()
+		if err == io.EOF {
+			// WebRTC Transport closed
+			log.Printf("WebRTC Transport Closed")
+		}
+	}()
+
+	log.Printf("Published %s", answer.Mediainfo.Mid)
+	return answer.Mediainfo.Mid
 }
 
-func (t *RoomClient) handleNotification(msg peer.Notification) {
-	switch msg.Method {
-	case proto.ClientOnStreamAdd:
-		t.handleStreamAdd(msg.Data)
-	case proto.ClientOnStreamRemove:
-		t.handleStreamRemove(msg.Data)
-	case proto.ClientBroadcast:
-		t.OnBroadcast <- msg.Data
-	}
-}
+func (lc *LoadClient) Unpublish() {
+	ctx := context.Background()
+	_, err := lc.c.Unpublish(ctx, &sfu.UnpublishRequest{Mid: lc.mid})
 
-func (t *RoomClient) handleStreamAdd(msg json.RawMessage) {
-	var msgData proto.StreamAddMsg
-	if err := json.Unmarshal(msg, &msgData); err != nil {
-		log.Println("Marshal error", err)
-		return
-	}
-	log.Println("New stream", msgData)
-	t.OnStreamAdd <- msgData
-}
-
-func (t *RoomClient) handleStreamRemove(msg json.RawMessage) {
-	var msgData proto.StreamRemoveMsg
-	if err := json.Unmarshal(msg, &msgData); err != nil {
-		log.Println("Marshal error", err)
-		return
-	}
-	log.Println("Remove stream", msgData)
-	t.OnStreamRemove <- msgData
-}
-
-func (t *RoomClient) subcribe(mid string) {
-
-}
-
-func (t *RoomClient) UnPublish() {
-	msg := proto.UnpublishMsg{MediaInfo: t.MediaInfo}
-	res := <-t.WsPeer.Request(proto.ClientUnPublish, msg, nil, nil)
-	if res.Err != nil {
-		logger.Infof("unpublish reject: %d => %s", res.Err.Code, res.Err.Text)
-		return
+	if err != nil {
+		log.Fatalf("Error unpublishing: %v", err)
 	}
 
 	// Stop producer peer connection
-	t.pubPeerCon.Close()
+	lc.pc.Close()
 }
 
-func (t *RoomClient) Subscribe(subData proto.StreamAddMsg) {
-	info := subData.MediaInfo
-	log.Println("Subscribing to ", info)
-	id := len(t.consumers) // broken make better
-	codec := ""
-	// Find codec of first video track
-	for _, trackList := range subData.Tracks {
-		if len(trackList) == 0 {
-			continue
-		}
-		track := trackList[0]
-		if track.Type == "video" {
-			codec = track.Codec
-			break
-		}
-	}
+func (lc *LoadClient) Subscribe(mid string) {
+	log.Println("Subscribing to ", mid)
+	id := len(lc.consumers) // broken make better
 
 	// Create peer connection
-	pc := newConsumerPeerCon(t.name, id, codec)
+	pc := newConsumerPeerCon(lc.name, id)
 	// Create an offer to send to the browser
 	offer, err := pc.CreateOffer(nil)
 	if err != nil {
@@ -258,63 +191,57 @@ func (t *RoomClient) Subscribe(subData proto.StreamAddMsg) {
 		panic(err)
 	}
 
-	// Send subscribe requestv
-	req := proto.SubscribeMsg{
-		MediaInfo: info,
-		RTCInfo:   proto.RTCInfo{Jsep: offer},
-	}
-	res := <-t.WsPeer.Request(proto.ClientSubscribe, req, nil, nil)
-	if res.Err != nil {
-		logger.Infof("unpublish reject: %d => %s", res.Err.Code, res.Err.Text)
-		return
-	}
+	ctx := context.Background()
+	answer, err := lc.c.Subscribe(ctx, &sfu.SubscribeRequest{Mid: mid, Description: &sfu.SessionDescription{
+		Type: offer.Type.String(),
+		Sdp:  offer.SDP,
+	}})
 
-	var msg proto.SubscribeResponseMsg
-	err = json.Unmarshal(res.Result, &msg)
 	if err != nil {
-		log.Println(err)
+		log.Printf("Error subscribing to stream: %v", err)
 		return
 	}
 
 	// Set the remote SessionDescription
-	err = pc.SetRemoteDescription(msg.Jsep)
+	err = pc.SetRemoteDescription(webrtc.SessionDescription{
+		Type: webrtc.SDPTypeAnswer,
+		SDP:  answer.Description.Sdp,
+	})
+
 	if err != nil {
 		panic(err)
 	}
 
 	// Create consumer
-	consumer := &Consumer{pc, info}
-	t.consumers = append(t.consumers, consumer)
+	consumer := &Consumer{pc, mid}
+	lc.consumers = append(lc.consumers, consumer)
 
 	log.Println("Subscribe complete")
 }
 
-func (t *RoomClient) UnSubscribe(info proto.MediaInfo) {
+func (lc *LoadClient) Unsubscribe(mid string) {
 	// Send upsubscribe request
 	// Shut down peerConnection
 	var sub *Consumer
-	for _, a := range t.consumers {
-		if a.Info.MID == info.MID {
+	for _, a := range lc.consumers {
+		if a.Mid == mid {
 			sub = a
 			break
 		}
 	}
+
 	if sub != nil && sub.Pc != nil {
 		log.Println("Closing subscription peerConnection")
 		sub.Pc.Close()
 	}
 }
 
-func (t *RoomClient) Leave() {
-
-}
-
-// Shutdown client and websocket transport
-func (t *RoomClient) Close() {
-	t.client.Close()
+// Close client and websocket transport
+func (lc *LoadClient) Close() {
+	lc.conn.Close()
 
 	// Close any remaining consumers
-	for _, sub := range t.consumers {
+	for _, sub := range lc.consumers {
 		sub.Pc.Close()
 	}
 }
