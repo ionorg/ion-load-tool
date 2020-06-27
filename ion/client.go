@@ -15,18 +15,16 @@ import (
 )
 
 var (
-	IceServers = []webrtc.ICEServer{
-		{
-			URLs: []string{"stun:stun.l.google.com:19302"},
+	conf = webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			{
+				URLs: []string{"stun:stun.l.google.com:19302"},
+			},
 		},
 	}
 )
 
-type Consumer struct {
-	Pc  *webrtc.PeerConnection
-	Mid string
-}
-
+// LoadClient can be used for producing and consuming sfu streams
 type LoadClient struct {
 	name       string
 	mid        string
@@ -39,6 +37,7 @@ type LoadClient struct {
 	media      producer.IFileProducer
 }
 
+// NewLoadClient creates a new LoadClient instance
 func NewLoadClient(name, room, address, input string) *LoadClient {
 	log.Printf("Creating load client => name: %s room: %s input: %s", name, room, input)
 
@@ -50,9 +49,7 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 	c := sfu.NewSFUClient(conn)
 
 	// Create peer connection
-	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{
-		ICEServers: IceServers,
-	})
+	pc, err := webrtc.NewPeerConnection(conf)
 
 	if err != nil {
 		log.Fatal(err)
@@ -84,6 +81,7 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 	return &lc
 }
 
+// Publish a stream with load client
 func (lc *LoadClient) Publish() string {
 	log.Printf("Publishing stream for client: %s", lc.name)
 	if lc.media.AudioTrack() != nil {
@@ -154,6 +152,7 @@ func (lc *LoadClient) Publish() string {
 		if err == io.EOF {
 			// WebRTC Transport closed
 			log.Printf("WebRTC Transport Closed")
+			lc.Close()
 		}
 	}()
 
@@ -161,32 +160,22 @@ func (lc *LoadClient) Publish() string {
 	return answer.Mediainfo.Mid
 }
 
-func (lc *LoadClient) Unpublish() {
-	ctx := context.Background()
-	_, err := lc.c.Unpublish(ctx, &sfu.UnpublishRequest{Mid: lc.mid})
-
-	if err != nil {
-		log.Fatalf("Error unpublishing: %v", err)
-	}
-
-	// Stop producer peer connection
-	lc.pc.Close()
-}
-
+// Subscribe to a stream with load client
 func (lc *LoadClient) Subscribe(mid string) {
 	log.Println("Subscribing to ", mid)
 	id := len(lc.consumers) // broken make better
 
-	// Create peer connection
-	pc := newConsumerPeerCon(lc.name, id)
+	// Create new consumer
+	consumer := NewConsumer(lc.name, id)
+
 	// Create an offer to send to the browser
-	offer, err := pc.CreateOffer(nil)
+	offer, err := consumer.Pc.CreateOffer(nil)
 	if err != nil {
 		panic(err)
 	}
 
 	// Sets the LocalDescription, and starts our UDP listeners
-	err = pc.SetLocalDescription(offer)
+	err = consumer.Pc.SetLocalDescription(offer)
 	if err != nil {
 		panic(err)
 	}
@@ -203,7 +192,7 @@ func (lc *LoadClient) Subscribe(mid string) {
 	}
 
 	// Set the remote SessionDescription
-	err = pc.SetRemoteDescription(webrtc.SessionDescription{
+	err = consumer.Pc.SetRemoteDescription(webrtc.SessionDescription{
 		Type: webrtc.SDPTypeAnswer,
 		SDP:  answer.Description.Sdp,
 	})
@@ -212,28 +201,9 @@ func (lc *LoadClient) Subscribe(mid string) {
 		panic(err)
 	}
 
-	// Create consumer
-	consumer := &Consumer{pc, mid}
 	lc.consumers = append(lc.consumers, consumer)
 
 	log.Println("Subscribe complete")
-}
-
-func (lc *LoadClient) Unsubscribe(mid string) {
-	// Send upsubscribe request
-	// Shut down peerConnection
-	var sub *Consumer
-	for _, a := range lc.consumers {
-		if a.Mid == mid {
-			sub = a
-			break
-		}
-	}
-
-	if sub != nil && sub.Pc != nil {
-		log.Println("Closing subscription peerConnection")
-		sub.Pc.Close()
-	}
 }
 
 // Close client and websocket transport

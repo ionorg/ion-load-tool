@@ -6,6 +6,44 @@ import (
 	"github.com/pion/webrtc/v2"
 )
 
+// Consumer subscribes to a sfu pub and consumes its output
+type Consumer struct {
+	Pc *webrtc.PeerConnection
+}
+
+// NewConsumer creates a new consumer instance
+// name is the client name, id is the consumer instance id
+func NewConsumer(name string, id int) *Consumer {
+	m := webrtc.MediaEngine{}
+	m.RegisterDefaultCodecs()
+
+	// Create the API object with the MediaEngine
+	api := webrtc.NewAPI(webrtc.WithMediaEngine(m))
+
+	// Create a new RTCPeerConnection
+	pc, err := api.NewPeerConnection(conf)
+	if err != nil {
+		panic(err)
+	}
+
+	// Allow us to receive 1 audio track, and 1 video track
+	if _, err = pc.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
+		panic(err)
+	}
+
+	pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
+		log.Printf("Client %v Consumer %d Connection State has changed %s \n", name, id, connectionState.String())
+	})
+
+	pc.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
+		go discardConsumeLoop(track)
+	})
+
+	return &Consumer{
+		Pc: pc,
+	}
+}
+
 func discardConsumeLoop(track *webrtc.Track) {
 	log.Println("Start discard consumer")
 	var lastNum uint16
@@ -23,39 +61,4 @@ func discardConsumeLoop(track *webrtc.Track) {
 		}
 		lastNum = seq
 	}
-}
-
-func newConsumerPeerCon(clientId string, consumerId int) *webrtc.PeerConnection {
-	// Create a MediaEngine object to configure the supported codec
-	m := webrtc.MediaEngine{}
-	m.RegisterDefaultCodecs()
-
-	// Create the API object with the MediaEngine
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(m))
-
-	// Prepare the configuration
-	config := webrtc.Configuration{
-		ICEServers: IceServers,
-	}
-
-	// Create a new RTCPeerConnection
-	peerConnection, err := api.NewPeerConnection(config)
-	if err != nil {
-		panic(err)
-	}
-
-	// Allow us to receive 1 audio track, and 1 video track
-	if _, err = peerConnection.AddTransceiverFromKind(webrtc.RTPCodecTypeVideo); err != nil {
-		panic(err)
-	}
-
-	peerConnection.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
-		log.Printf("Client %v Consumer %d Connection State has changed %s \n", clientId, consumerId, connectionState.String())
-	})
-
-	peerConnection.OnTrack(func(track *webrtc.Track, receiver *webrtc.RTPReceiver) {
-		go discardConsumeLoop(track)
-	})
-
-	return peerConnection
 }
