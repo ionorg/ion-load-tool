@@ -72,7 +72,6 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 			})
 		} else if ext == ".ivf" {
 			lc.media = ivf.NewIVFProducer(input, 1)
-			lc.media.Start()
 		} else {
 			panic("unsupported input type")
 		}

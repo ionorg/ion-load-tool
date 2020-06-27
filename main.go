@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -15,9 +14,8 @@ import (
 )
 
 var (
-	clients   []*ion.LoadClient
-	streams   []string
-	waitGroup sync.WaitGroup
+	clients []*ion.LoadClient
+	streams []string
 )
 
 func main() {
