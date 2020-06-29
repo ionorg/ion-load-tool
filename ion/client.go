@@ -6,7 +6,7 @@ import (
 	"log"
 	"path/filepath"
 
-	sfu "github.com/pion/ion-sfu/pkg/proto/sfu"
+	sfu "github.com/pion/ion-sfu/pkg/proto"
 	"github.com/pion/producer"
 	"github.com/pion/producer/ivf"
 	"github.com/pion/producer/webm"
@@ -119,7 +119,7 @@ func (lc *LoadClient) Publish() string {
 	ctx := context.Background()
 	stream, err := lc.c.Publish(ctx, &sfu.PublishRequest{
 		Rid: "default",
-		Options: &sfu.PublishOptions{
+		Options: &sfu.Options{
 			Codec: "VP8",
 		},
 		Description: &sfu.SessionDescription{
@@ -155,8 +155,8 @@ func (lc *LoadClient) Publish() string {
 		}
 	}()
 
-	log.Printf("Published %s", answer.Mediainfo.Mid)
-	return answer.Mediainfo.Mid
+	log.Printf("Published %s", answer.Mid)
+	return answer.Mid
 }
 
 // Subscribe to a stream with load client
