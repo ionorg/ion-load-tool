@@ -2,6 +2,7 @@ package ion
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"path/filepath"
@@ -117,46 +118,64 @@ func (lc *LoadClient) Publish() string {
 	lc.media.Start()
 
 	ctx := context.Background()
-	stream, err := lc.c.Publish(ctx, &sfu.PublishRequest{
+	stream, err := lc.c.Publish(ctx)
+
+	if err != nil {
+		log.Fatalf("Error publishing response: %v", err)
+	}
+
+	stream.Send(&sfu.PublishRequest{
 		Rid: "default",
-		Options: &sfu.Options{
-			Codec: "VP8",
-		},
-		Description: &sfu.SessionDescription{
-			Type: offer.Type.String(),
-			Sdp:  offer.SDP,
+		Payload: &sfu.PublishRequest_Connect{
+			Connect: &sfu.Connect{
+				Options: &sfu.Options{
+					Codec: "VP8",
+				},
+				Description: &sfu.SessionDescription{
+					Type: offer.Type.String(),
+					Sdp:  offer.SDP,
+				},
+			},
 		},
 	})
 
+	// First response is always connect
+	res, err := stream.Recv()
 	if err != nil {
-		log.Printf("Error publishing stream: %v", err)
-		return ""
-	}
-
-	answer, err := stream.Recv()
-	if err != nil {
-		log.Fatalf("Error receving publish response: %v", err)
+		log.Fatalf("Error receiving publish->connect response: %v", err)
 	}
 
 	// Set the remote SessionDescription
 	if err = lc.pc.SetRemoteDescription(webrtc.SessionDescription{
 		Type: webrtc.SDPTypeAnswer,
-		SDP:  answer.Description.Sdp,
+		SDP:  res.GetConnect().Description.GetSdp(),
 	}); err != nil {
 		panic(err)
 	}
 
 	go func() {
-		answer, err = stream.Recv()
-		if err == io.EOF {
-			// WebRTC Transport closed
-			log.Printf("WebRTC Transport Closed")
-			lc.Close()
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				// WebRTC Transport closed
+				fmt.Println("WebRTC Transport Closed")
+				lc.Close()
+				return
+			}
+
+			if err != nil {
+				log.Fatalf("Error receiving publish response: %v", err)
+			}
+
+			switch payload := res.Payload.(type) {
+			case *sfu.PublishReply_Trickle:
+				lc.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: payload.Trickle.Candidate})
+			}
 		}
 	}()
 
-	log.Printf("Published %s", answer.Mid)
-	return answer.Mid
+	log.Printf("Published %s", res.Mid)
+	return res.Mid
 }
 
 // Subscribe to a stream with load client
@@ -180,10 +199,29 @@ func (lc *LoadClient) Subscribe(mid string) {
 	}
 
 	ctx := context.Background()
-	answer, err := lc.c.Subscribe(ctx, &sfu.SubscribeRequest{Mid: mid, Description: &sfu.SessionDescription{
-		Type: offer.Type.String(),
-		Sdp:  offer.SDP,
-	}})
+	stream, err := lc.c.Subscribe(ctx)
+	if err != nil {
+		log.Fatalf("Error receiving subscribe response: %v", err)
+	}
+
+	err = stream.Send(&sfu.SubscribeRequest{
+		Mid: mid,
+		Payload: &sfu.SubscribeRequest_Connect{
+			Connect: &sfu.Connect{
+				Description: &sfu.SessionDescription{
+					Type: offer.Type.String(),
+					Sdp:  offer.SDP,
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		log.Fatalf("Error sending connect request: %v", err)
+	}
+
+	// First response is always connect
+	res, err := stream.Recv()
 
 	if err != nil {
 		log.Printf("Error subscribing to stream: %v", err)
@@ -193,8 +231,29 @@ func (lc *LoadClient) Subscribe(mid string) {
 	// Set the remote SessionDescription
 	err = consumer.Pc.SetRemoteDescription(webrtc.SessionDescription{
 		Type: webrtc.SDPTypeAnswer,
-		SDP:  answer.Description.Sdp,
+		SDP:  res.GetConnect().Description.Sdp,
 	})
+
+	go func() {
+		for {
+			res, err := stream.Recv()
+			if err == io.EOF {
+				// WebRTC Transport closed
+				fmt.Println("WebRTC Transport Closed")
+				lc.Close()
+				return
+			}
+
+			if err != nil {
+				log.Fatalf("Error receiving subscribe response: %v", err)
+			}
+
+			switch payload := res.Payload.(type) {
+			case *sfu.SubscribeReply_Trickle:
+				lc.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: payload.Trickle.Candidate})
+			}
+		}
+	}()
 
 	if err != nil {
 		panic(err)

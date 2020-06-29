@@ -152,6 +152,7 @@ github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/lucas-clemente/quic-go v0.7.1-0.20190401152353-907071221cf9 h1:tbuodUh2vuhOVZAdW3NEUvosFHUMJwUNl7jk/VSEiwc=
 github.com/lucas-clemente/quic-go v0.7.1-0.20190401152353-907071221cf9/go.mod h1:PpMmPfPKO9nKJ/psF49ESTAGQSdfXxlg1otPbEB2nOw=
+github.com/lucsky/cuid v1.0.2/go.mod h1:QaaJqckboimOmhRSJXSx/+IT+VTfxfPGSo/6mfgUfmE=
 github.com/magiconair/properties v1.8.1/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/marten-seemann/qtls v0.2.3 h1:0yWJ43C62LsZt08vuQJDK1uC1czUc3FJeCLPoNAI4vA=
 github.com/marten-seemann/qtls v0.2.3/go.mod h1:xzjG7avBwGGbdZ8dTGxlBnLArsVKLvwmjgmPuiQEcYk=
@@ -200,6 +201,8 @@ github.com/pion/ion-sfu v0.0.0-20200629005327-fca117e4f9ce h1:rrv6eShhSVa99p2Hm3
 github.com/pion/ion-sfu v0.0.0-20200629005327-fca117e4f9ce/go.mod h1:7p9NutaLLCO908lA919fpxScwiLC9hx/mm3i21Rg2KE=
 github.com/pion/ion-sfu v0.0.0-20200629120306-6dc0a46b6f7f h1:zs9WUu2DjX/0eexQ2/TFHRuThe0iDUmLiQjhElnMO2s=
 github.com/pion/ion-sfu v0.0.0-20200629120306-6dc0a46b6f7f/go.mod h1:7p9NutaLLCO908lA919fpxScwiLC9hx/mm3i21Rg2KE=
+github.com/pion/ion-sfu v0.0.0-20200629143722-feb23772ceaf h1:+e6VHI+r9zT5sCVXqfICkJFRuEIrkf5sOTZ6T+7zCrQ=
+github.com/pion/ion-sfu v0.0.0-20200629143722-feb23772ceaf/go.mod h1:llSXm/DmQAoSPh6V0CxiviI5sdwXhWMUFCiv1WuVXRM=
 github.com/pion/logging v0.2.2 h1:M9+AIj/+pxNsDfAT64+MAVgJO0rsyLnoJKCqf//DoeY=
 github.com/pion/logging v0.2.2/go.mod h1:k0/tDVsRCX2Mb2ZEmTqNa7CWsQPc+YYCB7Q+5pahoms=
 github.com/pion/mdns v0.0.4 h1:O4vvVqr4DGX63vzmO6Fw9vpy3lfztVWHGCQfyw0ZLSY=
