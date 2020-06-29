@@ -27,6 +27,12 @@ Pass `-input`
 
 File inputs and stream inputs are supported. For a files, the path can be a `ivf` or `webm` file. For streams, we support an `mid` published to the specified `sfu`
 
+#### Room
+
+Pass `-room`
+
+Specify a room to pubuce/consume from. Specify multiple rooms with `-room room1 -room room2`.
+
 #### Producer
 
 Pass `-produce`
