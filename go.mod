@@ -3,7 +3,9 @@ module github.com/pion/ion-load-tool
 go 1.13
 
 require (
-	github.com/pion/ion-sfu v0.0.0-20200629120306-6dc0a46b6f7f
+	github.com/envoyproxy/go-control-plane v0.9.4 // indirect
+	github.com/google/uuid v1.1.1 // indirect
+	github.com/pion/ion-sfu v0.0.0-20200629143722-feb23772ceaf
 	github.com/pion/producer v0.0.0-20200517154709-fabafe00b1f3
 	github.com/pion/webrtc/v2 v2.2.17
 	google.golang.org/grpc v1.26.0
