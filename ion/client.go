@@ -28,7 +28,6 @@ var (
 // LoadClient can be used for producing and consuming sfu streams
 type LoadClient struct {
 	name       string
-	mid        string
 	pc         *webrtc.PeerConnection
 	AudioTrack *webrtc.Track
 	VideoTrack *webrtc.Track
@@ -160,6 +159,13 @@ func (lc *LoadClient) Publish() string {
 				// WebRTC Transport closed
 				fmt.Println("WebRTC Transport Closed")
 				lc.Close()
+				stream.CloseSend()
+				return
+			}
+
+			if err == grpc.ErrClientConnClosing {
+				// Client connection closed
+				stream.CloseSend()
 				return
 			}
 
@@ -241,6 +247,13 @@ func (lc *LoadClient) Subscribe(mid string) {
 				// WebRTC Transport closed
 				fmt.Println("WebRTC Transport Closed")
 				lc.Close()
+				stream.CloseSend()
+				return
+			}
+
+			if err == grpc.ErrClientConnClosing {
+				// Client connection closed
+				stream.CloseSend()
 				return
 			}
 
@@ -266,6 +279,7 @@ func (lc *LoadClient) Subscribe(mid string) {
 
 // Close client and websocket transport
 func (lc *LoadClient) Close() {
+	log.Printf("Closing load client %s", lc.name)
 	lc.conn.Close()
 
 	// Close any remaining consumers

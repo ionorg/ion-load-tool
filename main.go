@@ -95,8 +95,8 @@ func main() {
 	flag.Float64Var(&stagger, "stagger", 1.0, "Number of seconds to stagger client start and stop")
 	flag.IntVar(&duration, "seconds", 60, "Number of seconds to run test for")
 	flag.BoolVar(&audio, "audio", false, "Publish audio stream from webm file")
-	flag.BoolVar(&produce, "produce", true, "path to the media file you want to playback")
-	flag.BoolVar(&consume, "consume", true, "Run subscribe to all streams and consume data")
+	flag.BoolVar(&produce, "produce", false, "path to the media file you want to playback")
+	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
 
 	flag.Parse()
 
