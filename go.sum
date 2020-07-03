@@ -203,6 +203,8 @@ github.com/pion/ion-sfu v0.0.0-20200629120306-6dc0a46b6f7f h1:zs9WUu2DjX/0eexQ2/
 github.com/pion/ion-sfu v0.0.0-20200629120306-6dc0a46b6f7f/go.mod h1:7p9NutaLLCO908lA919fpxScwiLC9hx/mm3i21Rg2KE=
 github.com/pion/ion-sfu v0.0.0-20200629143722-feb23772ceaf h1:+e6VHI+r9zT5sCVXqfICkJFRuEIrkf5sOTZ6T+7zCrQ=
 github.com/pion/ion-sfu v0.0.0-20200629143722-feb23772ceaf/go.mod h1:llSXm/DmQAoSPh6V0CxiviI5sdwXhWMUFCiv1WuVXRM=
+github.com/pion/ion-sfu v0.0.0-20200703205500-bd6117055f72 h1:9pzTuFuJKUh0LBW9wMEvnj+Wbb38vla+wqhT+5zY8YU=
+github.com/pion/ion-sfu v0.0.0-20200703205500-bd6117055f72/go.mod h1:v5N+UIo8zZSOuPduI3QRi3kb6v7bUYb+qmQ7pwDQk60=
 github.com/pion/logging v0.2.2 h1:M9+AIj/+pxNsDfAT64+MAVgJO0rsyLnoJKCqf//DoeY=
 github.com/pion/logging v0.2.2/go.mod h1:k0/tDVsRCX2Mb2ZEmTqNa7CWsQPc+YYCB7Q+5pahoms=
 github.com/pion/mdns v0.0.4 h1:O4vvVqr4DGX63vzmO6Fw9vpy3lfztVWHGCQfyw0ZLSY=
@@ -230,6 +232,8 @@ github.com/pion/sdp/v2 v2.3.7 h1:WUZHI3pfiYCaE8UGUYcabk863LCK+Bq3AklV5O0oInQ=
 github.com/pion/sdp/v2 v2.3.7/go.mod h1:+ZZf35r1+zbaWYiZLfPutWfx58DAWcGb2QsS3D/s9M8=
 github.com/pion/sdp/v2 v2.3.8 h1:iXlpgsRx3dFGdU8vhSOKZiiTVp2BjIXxh0ims6MqBzk=
 github.com/pion/sdp/v2 v2.3.8/go.mod h1:VyECSprlbQuv07sO/d0grXEX890kF13YLQt2F0NOqYA=
+github.com/pion/sdp/v2 v2.3.9 h1:KQMzypCMOcbHnx20t2r/Kuh9rKqWBa7RVy2tZ8Zk2MA=
+github.com/pion/sdp/v2 v2.3.9/go.mod h1:sbxACjjlmwAgXMk0Qqw9uzFaazLIdPv4m0mIreLzPVk=
 github.com/pion/srtp v1.3.2 h1:RqIhHmdR9PRFaLRXsah4k6kUXCgz5nBU6IKnI8GyfV8=
 github.com/pion/srtp v1.3.2/go.mod h1:snPrfN+gVpRBpmats49oxLWfcFB01eH1N9F+N7+dxKI=
 github.com/pion/srtp v1.3.4 h1:idh+9/W7tLOsHjcYYketIPSShb9k2Dz+RVrqyCm2LQE=
@@ -333,6 +337,8 @@ golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59 h1:3zb4D3T4G8jdExgVU/95+v
 golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20200602180216-279210d13fed h1:g4KENRiCMEx58Q7/ecwfT0N2o8z35Fnbsjig/Alf2T4=
 golang.org/x/crypto v0.0.0-20200602180216-279210d13fed/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 h1:psW17arqaxU48Z5kZ0CQnkZWQJsqcURM6tKiBApRjXI=
+golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/exp v0.0.0-20190306152737-a1d7652674e8/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/exp v0.0.0-20190510132918-efd6b22b2522/go.mod h1:ZjyILWgesfNpC6sMxTJOJm9Kp84zZh5NQWvqDGG3Qr8=
