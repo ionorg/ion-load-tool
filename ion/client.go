@@ -127,12 +127,9 @@ func (lc *LoadClient) Publish() string {
 		Rid: "default",
 		Payload: &sfu.PublishRequest_Connect{
 			Connect: &sfu.Connect{
-				Options: &sfu.Options{
-					Codec: "VP8",
-				},
 				Description: &sfu.SessionDescription{
 					Type: offer.Type.String(),
-					Sdp:  offer.SDP,
+					Sdp:  []byte(offer.SDP),
 				},
 			},
 		},
@@ -147,7 +144,7 @@ func (lc *LoadClient) Publish() string {
 	// Set the remote SessionDescription
 	if err = lc.pc.SetRemoteDescription(webrtc.SessionDescription{
 		Type: webrtc.SDPTypeAnswer,
-		SDP:  res.GetConnect().Description.GetSdp(),
+		SDP:  string(res.GetConnect().Description.GetSdp()),
 	}); err != nil {
 		panic(err)
 	}
@@ -216,7 +213,7 @@ func (lc *LoadClient) Subscribe(mid string) {
 			Connect: &sfu.Connect{
 				Description: &sfu.SessionDescription{
 					Type: offer.Type.String(),
-					Sdp:  offer.SDP,
+					Sdp:  []byte(offer.SDP),
 				},
 			},
 		},
@@ -237,7 +234,7 @@ func (lc *LoadClient) Subscribe(mid string) {
 	// Set the remote SessionDescription
 	err = consumer.Pc.SetRemoteDescription(webrtc.SessionDescription{
 		Type: webrtc.SDPTypeAnswer,
-		SDP:  res.GetConnect().Description.Sdp,
+		SDP:  string(res.GetConnect().Description.Sdp),
 	})
 
 	go func() {
