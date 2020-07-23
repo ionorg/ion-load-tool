@@ -7,7 +7,7 @@ import (
 	"log"
 	"path/filepath"
 
-	sfu "github.com/pion/ion-sfu/pkg/proto"
+	sfu "github.com/pion/ion-sfu/cmd/server/grpc/proto"
 	"github.com/pion/producer"
 	"github.com/pion/producer/ivf"
 	"github.com/pion/producer/webm"
@@ -117,20 +117,17 @@ func (lc *LoadClient) Publish() string {
 	lc.media.Start()
 
 	ctx := context.Background()
-	stream, err := lc.c.Publish(ctx)
+	stream, err := lc.c.Signal(ctx)
 
 	if err != nil {
 		log.Fatalf("Error publishing response: %v", err)
 	}
 
-	stream.Send(&sfu.PublishRequest{
-		Rid: "default",
-		Payload: &sfu.PublishRequest_Connect{
-			Connect: &sfu.Connect{
-				Description: &sfu.SessionDescription{
-					Type: offer.Type.String(),
-					Sdp:  []byte(offer.SDP),
-				},
+	stream.Send(&sfu.SignalRequest{
+		Payload: &sfu.SignalRequest_Connect{
+			Connect: &sfu.SessionDescription{
+				Type: offer.Type.String(),
+				Sdp:  []byte(offer.SDP),
 			},
 		},
 	})
@@ -141,10 +138,11 @@ func (lc *LoadClient) Publish() string {
 		log.Fatalf("Error receiving publish->connect response: %v", err)
 	}
 
+	pid := res.GetConnect().Pid
 	// Set the remote SessionDescription
 	if err = lc.pc.SetRemoteDescription(webrtc.SessionDescription{
 		Type: webrtc.SDPTypeAnswer,
-		SDP:  string(res.GetConnect().Description.GetSdp()),
+		SDP:  string(res.GetConnect().Answer.Sdp),
 	}); err != nil {
 		panic(err)
 	}
@@ -171,108 +169,117 @@ func (lc *LoadClient) Publish() string {
 			}
 
 			switch payload := res.Payload.(type) {
-			case *sfu.PublishReply_Trickle:
+			case *sfu.SignalReply_Track:
+				fmt.Printf("got track %d", payload.Track.Ssrc)
+				stream.Send(&sfu.SignalRequest{
+					Payload: &sfu.SignalRequest_Subscribe{
+						Subscribe: &sfu.Subscribe{
+							Ssrc: []int32{payload.Track.Ssrc},
+						},
+					},
+				})
+			case *sfu.SignalReply_Trickle:
 				lc.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: payload.Trickle.Candidate})
 			}
 		}
 	}()
 
-	log.Printf("Published %s", res.Mid)
-	return res.Mid
+	log.Printf("Published %s", pid)
+	return pid
 }
 
 // Subscribe to a stream with load client
-func (lc *LoadClient) Subscribe(mid string) {
-	log.Println("Subscribing to ", mid)
-	id := len(lc.consumers) // broken make better
+// func (lc *LoadClient) Subscribe(mid string) {
+// 	log.Println("Subscribing to ", mid)
+// 	id := len(lc.consumers) // broken make better
 
-	// Create new consumer
-	consumer := NewConsumer(lc.name, id)
+// 	// Create new consumer
+// 	consumer := NewConsumer(lc.name, id)
 
-	// Create an offer to send to the browser
-	offer, err := consumer.Pc.CreateOffer(nil)
-	if err != nil {
-		panic(err)
-	}
+// 	// Create an offer to send to the browser
+// 	offer, err := consumer.Pc.CreateOffer(nil)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	// Sets the LocalDescription, and starts our UDP listeners
-	err = consumer.Pc.SetLocalDescription(offer)
-	if err != nil {
-		panic(err)
-	}
+// 	// Sets the LocalDescription, and starts our UDP listeners
+// 	err = consumer.Pc.SetLocalDescription(offer)
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	ctx := context.Background()
-	stream, err := lc.c.Subscribe(ctx)
-	if err != nil {
-		log.Fatalf("Error receiving subscribe response: %v", err)
-	}
+// 	ctx := context.Background()
+// 	stream, err := lc.c.Subscribe(ctx)
+// 	if err != nil {
+// 		log.Fatalf("Error receiving subscribe response: %v", err)
+// 	}
 
-	err = stream.Send(&sfu.SubscribeRequest{
-		Mid: mid,
-		Payload: &sfu.SubscribeRequest_Connect{
-			Connect: &sfu.Connect{
-				Description: &sfu.SessionDescription{
-					Type: offer.Type.String(),
-					Sdp:  []byte(offer.SDP),
-				},
-			},
-		},
-	})
+// 	err = stream.Send(&sfu.SubscribeRequest{
+// 		Mid: mid,
+// 		Payload: &sfu.SubscribeRequest_Connect{
+// 			Connect: &sfu.Connect{
+// 				Description: &sfu.SessionDescription{
+// 					Type: offer.Type.String(),
+// 					Sdp:  []byte(offer.SDP),
+// 				},
+// 			},
+// 		},
+// 	})
 
-	if err != nil {
-		log.Fatalf("Error sending connect request: %v", err)
-	}
+// 	if err != nil {
+// 		log.Fatalf("Error sending connect request: %v", err)
+// 	}
 
-	// First response is always connect
-	res, err := stream.Recv()
+// 	// First response is always connect
+// 	res, err := stream.Recv()
 
-	if err != nil {
-		log.Printf("Error subscribing to stream: %v", err)
-		return
-	}
+// 	if err != nil {
+// 		log.Printf("Error subscribing to stream: %v", err)
+// 		return
+// 	}
 
-	// Set the remote SessionDescription
-	err = consumer.Pc.SetRemoteDescription(webrtc.SessionDescription{
-		Type: webrtc.SDPTypeAnswer,
-		SDP:  string(res.GetConnect().Description.Sdp),
-	})
+// 	// Set the remote SessionDescription
+// 	err = consumer.Pc.SetRemoteDescription(webrtc.SessionDescription{
+// 		Type: webrtc.SDPTypeAnswer,
+// 		SDP:  string(res.GetConnect().Description.Sdp),
+// 	})
 
-	go func() {
-		for {
-			res, err := stream.Recv()
-			if err == io.EOF {
-				// WebRTC Transport closed
-				fmt.Println("WebRTC Transport Closed")
-				lc.Close()
-				stream.CloseSend()
-				return
-			}
+// 	go func() {
+// 		for {
+// 			res, err := stream.Recv()
+// 			if err == io.EOF {
+// 				// WebRTC Transport closed
+// 				fmt.Println("WebRTC Transport Closed")
+// 				lc.Close()
+// 				stream.CloseSend()
+// 				return
+// 			}
 
-			if err == grpc.ErrClientConnClosing {
-				// Client connection closed
-				stream.CloseSend()
-				return
-			}
+// 			if err == grpc.ErrClientConnClosing {
+// 				// Client connection closed
+// 				stream.CloseSend()
+// 				return
+// 			}
 
-			if err != nil {
-				log.Fatalf("Error receiving subscribe response: %v", err)
-			}
+// 			if err != nil {
+// 				log.Fatalf("Error receiving subscribe response: %v", err)
+// 			}
 
-			switch payload := res.Payload.(type) {
-			case *sfu.SubscribeReply_Trickle:
-				lc.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: payload.Trickle.Candidate})
-			}
-		}
-	}()
+// 			switch payload := res.Payload.(type) {
+// 			case *sfu.SubscribeReply_Trickle:
+// 				lc.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: payload.Trickle.Candidate})
+// 			}
+// 		}
+// 	}()
 
-	if err != nil {
-		panic(err)
-	}
+// 	if err != nil {
+// 		panic(err)
+// 	}
 
-	lc.consumers = append(lc.consumers, consumer)
+// 	lc.consumers = append(lc.consumers, consumer)
 
-	log.Println("Subscribe complete")
-}
+// 	log.Println("Subscribe complete")
+// }
 
 // Close client and websocket transport
 func (lc *LoadClient) Close() {

@@ -43,21 +43,21 @@ func run(room, sfu, input string, produce, consume bool, n, duration int, stagge
 			}
 			mid := client.Publish()
 
-			if consume {
-				// Subscribe to existing pubs
-				for _, pub := range streams {
-					client.Subscribe(pub)
-				}
+			// if consume {
+			// 	// Subscribe to existing pubs
+			// 	for _, pub := range streams {
+			// 		client.Subscribe(pub)
+			// 	}
 
-				// Subscribe existing clients to new pub
-				for _, c := range clients {
-					c.Subscribe(mid)
-				}
-			}
+			// 	// Subscribe existing clients to new pub
+			// 	for _, c := range clients {
+			// 		c.Subscribe(mid)
+			// 	}
+			// }
 
 			streams = append(streams, mid)
-		} else if consume && input != "" {
-			client.Subscribe(input)
+			// } else if consume && input != "" {
+			// 	client.Subscribe(input)
 		} else {
 			panic("unsupported configuration. must produce or consume")
 		}
