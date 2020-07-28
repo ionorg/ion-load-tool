@@ -26,7 +26,6 @@ func (i *roomFlags) Set(value string) error {
 
 func run(room, sfu, input string, produce, consume bool, n, duration int, stagger time.Duration) {
 	var clients []*ion.LoadClient
-	var streams []string
 	timer := time.NewTimer(time.Duration(duration) * time.Second)
 
 	for i := 0; i < n; i++ {
@@ -41,23 +40,8 @@ func run(room, sfu, input string, produce, consume bool, n, duration int, stagge
 					panic("Only IVF and WEBM containers are supported.")
 				}
 			}
-			mid := client.Publish()
 
-			// if consume {
-			// 	// Subscribe to existing pubs
-			// 	for _, pub := range streams {
-			// 		client.Subscribe(pub)
-			// 	}
-
-			// 	// Subscribe existing clients to new pub
-			// 	for _, c := range clients {
-			// 		c.Subscribe(mid)
-			// 	}
-			// }
-
-			streams = append(streams, mid)
-			// } else if consume && input != "" {
-			// 	client.Subscribe(input)
+			client.Publish()
 		} else {
 			panic("unsupported configuration. must produce or consume")
 		}

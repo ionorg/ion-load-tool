@@ -2,6 +2,7 @@ package ion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -28,12 +29,12 @@ var (
 // LoadClient can be used for producing and consuming sfu streams
 type LoadClient struct {
 	name       string
+	room       string
 	pc         *webrtc.PeerConnection
 	AudioTrack *webrtc.Track
 	VideoTrack *webrtc.Track
 	conn       *grpc.ClientConn
 	c          sfu.SFUClient
-	consumers  []*Consumer
 	media      producer.IFileProducer
 }
 
@@ -56,11 +57,11 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 	}
 
 	lc := LoadClient{
-		name:      name,
-		conn:      conn,
-		c:         c,
-		pc:        pc,
-		consumers: make([]*Consumer, 0),
+		name: name,
+		room: room,
+		conn: conn,
+		c:    c,
+		pc:   pc,
 	}
 
 	if input != "" {
@@ -81,7 +82,7 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 }
 
 // Publish a stream with load client
-func (lc *LoadClient) Publish() string {
+func (lc *LoadClient) Publish() {
 	log.Printf("Publishing stream for client: %s", lc.name)
 	if lc.media.AudioTrack() != nil {
 		if _, err := lc.pc.AddTrack(lc.media.AudioTrack()); err != nil {
@@ -100,6 +101,11 @@ func (lc *LoadClient) Publish() string {
 
 	lc.pc.OnICEConnectionStateChange(func(connectionState webrtc.ICEConnectionState) {
 		log.Printf("Client %v producer State has changed %s \n", lc.name, connectionState.String())
+	})
+
+	lc.pc.OnTrack(func(track *webrtc.Track, recv *webrtc.RTPReceiver) {
+		log.Printf("Got on track: %v", track)
+		go discardConsumeLoop(track)
 	})
 
 	// Create an offer to send to the browser
@@ -124,28 +130,16 @@ func (lc *LoadClient) Publish() string {
 	}
 
 	stream.Send(&sfu.SignalRequest{
-		Payload: &sfu.SignalRequest_Connect{
-			Connect: &sfu.SessionDescription{
-				Type: offer.Type.String(),
-				Sdp:  []byte(offer.SDP),
+		Payload: &sfu.SignalRequest_Join{
+			Join: &sfu.JoinRequest{
+				Rid: lc.room,
+				Offer: &sfu.SessionDescription{
+					Type: offer.Type.String(),
+					Sdp:  []byte(offer.SDP),
+				},
 			},
 		},
 	})
-
-	// First response is always connect
-	res, err := stream.Recv()
-	if err != nil {
-		log.Fatalf("Error receiving publish->connect response: %v", err)
-	}
-
-	pid := res.GetConnect().Pid
-	// Set the remote SessionDescription
-	if err = lc.pc.SetRemoteDescription(webrtc.SessionDescription{
-		Type: webrtc.SDPTypeAnswer,
-		SDP:  string(res.GetConnect().Answer.Sdp),
-	}); err != nil {
-		panic(err)
-	}
 
 	go func() {
 		for {
@@ -169,125 +163,89 @@ func (lc *LoadClient) Publish() string {
 			}
 
 			switch payload := res.Payload.(type) {
-			case *sfu.SignalReply_Track:
-				fmt.Printf("got track %d", payload.Track.Ssrc)
-				stream.Send(&sfu.SignalRequest{
-					Payload: &sfu.SignalRequest_Subscribe{
-						Subscribe: &sfu.Subscribe{
-							Ssrc: []int32{payload.Track.Ssrc},
+			case *sfu.SignalReply_Join:
+				pid := res.GetJoin().Pid
+				// Set the remote SessionDescription
+				if err = lc.pc.SetRemoteDescription(webrtc.SessionDescription{
+					Type: webrtc.SDPTypeAnswer,
+					SDP:  string(res.GetJoin().Answer.Sdp),
+				}); err != nil {
+					panic(err)
+				}
+				log.Printf("Published %s", pid)
+			case *sfu.SignalReply_Negotiate:
+				if payload.Negotiate.Type == webrtc.SDPTypeOffer.String() {
+					offer := webrtc.SessionDescription{
+						Type: webrtc.SDPTypeOffer,
+						SDP:  string(payload.Negotiate.Sdp),
+					}
+
+					// Peer exists, renegotiating existing peer
+					err = lc.pc.SetRemoteDescription(offer)
+					if err != nil {
+						log.Printf("negotiate error %s", err)
+						continue
+					}
+
+					answer, err := lc.pc.CreateAnswer(nil)
+					if err != nil {
+						log.Printf("negotiate error %s", err)
+						continue
+					}
+
+					err = stream.Send(&sfu.SignalRequest{
+						Payload: &sfu.SignalRequest_Negotiate{
+							Negotiate: &sfu.SessionDescription{
+								Type: answer.Type.String(),
+								Sdp:  []byte(answer.SDP),
+							},
 						},
-					},
-				})
+					})
+					if err != nil {
+						log.Printf("negotiate error %s", err)
+						continue
+					}
+				} else if payload.Negotiate.Type == webrtc.SDPTypeAnswer.String() {
+					err = lc.pc.SetRemoteDescription(webrtc.SessionDescription{
+						Type: webrtc.SDPTypeAnswer,
+						SDP:  string(payload.Negotiate.Sdp),
+					})
+
+					if err != nil {
+						log.Printf("negotiate error %s", err)
+						continue
+					}
+				}
 			case *sfu.SignalReply_Trickle:
-				lc.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: payload.Trickle.Candidate})
+				var candidate webrtc.ICECandidateInit
+				_ = json.Unmarshal([]byte(payload.Trickle.Init), &candidate)
+				lc.pc.AddICECandidate(candidate)
 			}
 		}
 	}()
-
-	log.Printf("Published %s", pid)
-	return pid
 }
-
-// Subscribe to a stream with load client
-// func (lc *LoadClient) Subscribe(mid string) {
-// 	log.Println("Subscribing to ", mid)
-// 	id := len(lc.consumers) // broken make better
-
-// 	// Create new consumer
-// 	consumer := NewConsumer(lc.name, id)
-
-// 	// Create an offer to send to the browser
-// 	offer, err := consumer.Pc.CreateOffer(nil)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	// Sets the LocalDescription, and starts our UDP listeners
-// 	err = consumer.Pc.SetLocalDescription(offer)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	ctx := context.Background()
-// 	stream, err := lc.c.Subscribe(ctx)
-// 	if err != nil {
-// 		log.Fatalf("Error receiving subscribe response: %v", err)
-// 	}
-
-// 	err = stream.Send(&sfu.SubscribeRequest{
-// 		Mid: mid,
-// 		Payload: &sfu.SubscribeRequest_Connect{
-// 			Connect: &sfu.Connect{
-// 				Description: &sfu.SessionDescription{
-// 					Type: offer.Type.String(),
-// 					Sdp:  []byte(offer.SDP),
-// 				},
-// 			},
-// 		},
-// 	})
-
-// 	if err != nil {
-// 		log.Fatalf("Error sending connect request: %v", err)
-// 	}
-
-// 	// First response is always connect
-// 	res, err := stream.Recv()
-
-// 	if err != nil {
-// 		log.Printf("Error subscribing to stream: %v", err)
-// 		return
-// 	}
-
-// 	// Set the remote SessionDescription
-// 	err = consumer.Pc.SetRemoteDescription(webrtc.SessionDescription{
-// 		Type: webrtc.SDPTypeAnswer,
-// 		SDP:  string(res.GetConnect().Description.Sdp),
-// 	})
-
-// 	go func() {
-// 		for {
-// 			res, err := stream.Recv()
-// 			if err == io.EOF {
-// 				// WebRTC Transport closed
-// 				fmt.Println("WebRTC Transport Closed")
-// 				lc.Close()
-// 				stream.CloseSend()
-// 				return
-// 			}
-
-// 			if err == grpc.ErrClientConnClosing {
-// 				// Client connection closed
-// 				stream.CloseSend()
-// 				return
-// 			}
-
-// 			if err != nil {
-// 				log.Fatalf("Error receiving subscribe response: %v", err)
-// 			}
-
-// 			switch payload := res.Payload.(type) {
-// 			case *sfu.SubscribeReply_Trickle:
-// 				lc.pc.AddICECandidate(webrtc.ICECandidateInit{Candidate: payload.Trickle.Candidate})
-// 			}
-// 		}
-// 	}()
-
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	lc.consumers = append(lc.consumers, consumer)
-
-// 	log.Println("Subscribe complete")
-// }
 
 // Close client and websocket transport
 func (lc *LoadClient) Close() {
 	log.Printf("Closing load client %s", lc.name)
 	lc.conn.Close()
+}
 
-	// Close any remaining consumers
-	for _, sub := range lc.consumers {
-		sub.Pc.Close()
+func discardConsumeLoop(track *webrtc.Track) {
+	log.Println("Start discard consumer")
+	var lastNum uint16
+	for {
+		// Discard packet
+		// Do nothing
+		packet, err := track.ReadRTP()
+		if err != nil {
+			log.Println("Error reading RTP packet", err)
+			return
+		}
+		seq := packet.Header.SequenceNumber
+		if seq != lastNum+1 {
+			log.Printf("Packet out of order! prev %d current %d", lastNum, seq)
+		}
+		lastNum = seq
 	}
 }
