@@ -19,12 +19,23 @@ See the ffmpeg docs on [VP8](https://trac.ffmpeg.org/wiki/Encode/VP8) or [VP9](h
 
 ### Run
 
-`ion-load-tool -clients <num clients>`
+`ion-load-tool -input input.ivf -clients 2 -produce -consume`
 
+#### Input
+
+Pass `-input`
+
+File inputs and stream inputs are supported. For a files, the path can be a `ivf` or `webm` file. For streams, we support an `mid` published to the specified `sfu`
+
+#### Room
+
+Pass `-room`
+
+Specify a room to pubuce/consume from. Specify multiple rooms with `-room room1 -room room2`.
 
 #### Producer
 
-Pass `-produce <encoded video>`
+Pass `-produce`
 
 Each client starts stream playback in an offset position from the last with a different track and SSRC ID to simulate independent content.
 
@@ -40,9 +51,9 @@ Each client subscribes to all published streams in the provided room. A basic co
 
 #### N to N fully connected
 
-Run both produce and consume on the same command
+Run produce with multiple clients.
 
-`-produce <file> -consume -clients N`
+`-input <file> -produce -consume -clients N`
 
 This creates N clients publishing a stream, each of which will subscribe to the other N-1 client streams.
 
@@ -52,7 +63,7 @@ Run separate instances of the load tool.
 
 ##### Producer
 
-`-produce <file> -clients 1`
+`-input <file> -produce -clients 1`
 
 ##### Consumer
 `-consume -clients N`
