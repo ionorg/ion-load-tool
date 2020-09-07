@@ -12,7 +12,7 @@ import (
 	"github.com/pion/producer"
 	"github.com/pion/producer/ivf"
 	"github.com/pion/producer/webm"
-	"github.com/pion/webrtc/v2"
+	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
 )
 
