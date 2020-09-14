@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/pion/ion-load-tool/ion"
-	"github.com/pion/producer"
+	"github.com/pion/ion-load-tool/webm"
 )
 
 type roomFlags []string
@@ -34,7 +34,7 @@ func run(room, sfu, input string, produce, consume bool, n, duration int, stagge
 		if produce {
 			// Validate type
 			if input != "" {
-				ext, ok := producer.ValidateVPFile(input)
+				ext, ok := webm.ValidateVPFile(input)
 				log.Println(ext)
 				if !ok {
 					panic("Only IVF and WEBM containers are supported.")

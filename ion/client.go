@@ -10,7 +10,6 @@ import (
 
 	"github.com/pion/ion-load-tool/webm"
 	sfu "github.com/pion/ion-sfu/cmd/server/grpc/proto"
-	"github.com/pion/producer"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
 )
@@ -34,7 +33,7 @@ type LoadClient struct {
 	VideoTrack *webrtc.Track
 	conn       *grpc.ClientConn
 	c          sfu.SFUClient
-	media      producer.IFileProducer
+	media      *webm.WebMProducer
 }
 
 // NewLoadClient creates a new LoadClient instance
@@ -66,7 +65,7 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 	if input != "" {
 		ext := filepath.Ext(input)
 		if ext == ".webm" {
-			lc.media = webm.NewMFileProducer(input, 0, producer.TrackSelect{
+			lc.media = webm.NewMFileProducer(input, 0, webm.TrackSelect{
 				Audio: true,
 				Video: true,
 			})

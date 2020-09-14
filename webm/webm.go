@@ -5,13 +5,18 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ebml-go/webm"
-	"github.com/pion/producer"
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
 )
+
+type TrackSelect struct {
+	Audio bool
+	Video bool
+}
 
 type WebMProducer struct {
 	name          string
@@ -29,7 +34,7 @@ type WebMProducer struct {
 	file          *os.File
 }
 
-func NewMFileProducer(name string, offset int, ts producer.TrackSelect) *WebMProducer {
+func NewMFileProducer(name string, offset int, ts TrackSelect) *WebMProducer {
 	r, err := os.Open(name)
 	if err != nil {
 		log.Fatal("unable to open file", name)
@@ -91,7 +96,7 @@ type trackInfo struct {
 	lastFrameTime time.Duration
 }
 
-func (t *WebMProducer) buildTracks(ts producer.TrackSelect) {
+func (t *WebMProducer) buildTracks(ts TrackSelect) {
 	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		log.Fatal(err)
@@ -228,4 +233,21 @@ func (t *WebMProducer) readLoop() {
 		}
 	}
 	log.Println("Exiting webm producer")
+}
+
+func ValidateVPFile(name string) (string, bool) {
+	list := strings.Split(name, ".")
+	if len(list) < 2 {
+		return "", false
+	}
+	ext := strings.ToLower(list[len(list)-1])
+	var valid bool
+	// Validate is ivf|webm
+	for _, a := range []string{"ivf", "webm"} {
+		if a == ext {
+			valid = true
+		}
+	}
+
+	return ext, valid
 }
