@@ -310,6 +310,7 @@ github.com/pion/turn/v2 v2.0.4 h1:oDguhEv2L/4rxwbL9clGLgtzQPjtuZwCdoM7Te8vQVk=
 github.com/pion/turn/v2 v2.0.4/go.mod h1:1812p4DcGVbYVBTiraUmP50XoKye++AMkbfp+N27mog=
 github.com/pion/udp v0.1.0 h1:uGxQsNyrqG3GLINv36Ff60covYmfrLoxzwnCsIYspXI=
 github.com/pion/udp v0.1.0/go.mod h1:BPELIjbwE9PRbd/zxI/KYBnbo7B6+oA6YuEaNE8lths=
+github.com/pion/webrtc v1.2.0 h1:3LGGPQEMacwG2hcDfhdvwQPz315gvjZXOfY4vaF4+I4=
 github.com/pion/webrtc/v2 v2.2.9 h1:f3n4Bh67SyiX6HGL1CdfQzN3TxilvjoPx96FOLPHi8w=
 github.com/pion/webrtc/v2 v2.2.9/go.mod h1:TcArPDphZIBtZ+mh8J/qOREyY3ca7ihQrenulOIvfPQ=
 github.com/pion/webrtc/v2 v2.2.11 h1:JrgwKXqa78yatfu9g2CgxQ+SBb2UdkrSxCXvL9YMt34=

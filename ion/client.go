@@ -8,10 +8,9 @@ import (
 	"log"
 	"path/filepath"
 
+	"github.com/pion/ion-load-tool/webm"
 	sfu "github.com/pion/ion-sfu/cmd/server/grpc/proto"
 	"github.com/pion/producer"
-	"github.com/pion/producer/ivf"
-	"github.com/pion/producer/webm"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/grpc"
 )
@@ -71,8 +70,6 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 				Audio: true,
 				Video: true,
 			})
-		} else if ext == ".ivf" {
-			lc.media = ivf.NewIVFProducer(input, 1)
 		} else {
 			panic("unsupported input type")
 		}
@@ -103,7 +100,7 @@ func (lc *LoadClient) Publish() {
 		log.Printf("Client %v producer State has changed %s \n", lc.name, connectionState.String())
 	})
 
-	lc.pc.OnTrack(func(track *webrtc.Track, recv *webrtc.RTPReceiver) {
+	lc.pc.OnTrack(func(track *webrtc.Track, recv *webrtc.RTPReceiver, s []*webrtc.Stream) {
 		log.Printf("Got on track: %v", track)
 		go discardConsumeLoop(track)
 	})
@@ -132,7 +129,7 @@ func (lc *LoadClient) Publish() {
 	stream.Send(&sfu.SignalRequest{
 		Payload: &sfu.SignalRequest_Join{
 			Join: &sfu.JoinRequest{
-				Rid: lc.room,
+				Sid: lc.room,
 				Offer: &sfu.SessionDescription{
 					Type: offer.Type.String(),
 					Sdp:  []byte(offer.SDP),
