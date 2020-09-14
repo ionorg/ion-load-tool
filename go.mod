@@ -8,5 +8,5 @@ require (
 	github.com/petar/GoLLRB v0.0.0-20190514000832-33fb24c13b99 // indirect
 	github.com/pion/ion-sfu v1.0.7
 	github.com/pion/webrtc/v3 v3.0.0-beta.4.0.20200902134452-789ff0975342
-	google.golang.org/grpc v1.27.1
+	google.golang.org/grpc v1.32.0
 )
