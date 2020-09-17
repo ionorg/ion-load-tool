@@ -1,6 +1,6 @@
 [session]
-rooms = ["room 1", "room 2"]
-clients = 1
+rooms = 2
+clients = 2
 input = "../output.webm"
 sfu = 50051
 duration = 60

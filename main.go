@@ -14,17 +14,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-type roomFlags []string
-
-func (i *roomFlags) String() string {
-	return "default-room"
-}
-
-func (i *roomFlags) Set(value string) error {
-	*i = append(*i, value)
-	return nil
-}
-
 func run(room, sfu, input string, produce, consume bool, n, duration int, stagger time.Duration) {
 	var clients []*ion.LoadClient
 	timer := time.NewTimer(time.Duration(duration) * time.Second)
@@ -67,15 +56,15 @@ func run(room, sfu, input string, produce, consume bool, n, duration int, stagge
 }
 
 type SessionConfig struct {
-	Rooms   roomFlags    `mapstructure:"rooms"` // Rooms to join.
-	Clients int    `mapstructure:"clients"` // Number of clients to start.
-	Input   string `mapstructure:"input"` // path to the input media.
-	SFU string `mapstructure:"sfu"` // ion-sfu grpc url.
-	Stagger float64 `mapstructure:"stagger"` // Number of seconds to stagger client start and stop.
-	Duration int `mapstructure:"duration"` // Number of seconds to run test for
-	Audio bool `mapstructure:"audio"` // Publish audio stream from webm file
-	Produce bool `mapstructure:"produce"`
-	Consume bool `mapstructure:"consume"` // Run subscribe to all streams and consume data
+	Rooms    int     `mapstructure:"rooms"`    // Rooms to join.
+	Clients  int     `mapstructure:"clients"`  // Number of clients to start.
+	Input    string  `mapstructure:"input"`    // path to the input media.
+	SFU      string  `mapstructure:"sfu"`      // ion-sfu grpc url.
+	Stagger  float64 `mapstructure:"stagger"`  // Number of seconds to stagger client start and stop.
+	Duration int     `mapstructure:"duration"` // Number of seconds to run test for
+	Audio    bool    `mapstructure:"audio"`    // Publish audio stream from webm file
+	Produce  bool    `mapstructure:"produce"`
+	Consume  bool    `mapstructure:"consume"` // Run subscribe to all streams and consume data
 }
 
 type Config struct {
@@ -111,49 +100,20 @@ func loadConfig() bool {
 }
 
 func main() {
-	var rooms roomFlags
-	var sfu, input string
-	var n, duration int
-	var audio, produce, consume bool
-	var stagger float64
-
-	flag.StringVar(&input, "input", "", "path to the input media")
-	flag.StringVar(&sfu, "sfu", "50051", "ion-sfu grpc url")
-	flag.Var(&rooms, "room", "Rooms to join.")
-	flag.IntVar(&n, "clients", 1, "Number of clients to start")
-	flag.Float64Var(&stagger, "stagger", 1.0, "Number of seconds to stagger client start and stop")
-	flag.IntVar(&duration, "seconds", 60, "Number of seconds to run test for")
-	flag.BoolVar(&audio, "audio", false, "Publish audio stream from webm file")
-	flag.BoolVar(&produce, "produce", false, "path to the media file you want to playback")
-	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
 	flag.StringVar(&file, "c", "", "config file")
-
 	flag.Parse()
 
 	if loaded := loadConfig(); loaded {
 		log.Println("configuration successfully loaded!")
-		rooms = conf.Rooms
-		sfu = conf.SFU
-		n = conf.Clients
-		input = conf.Input
-		duration = conf.Duration
-		audio = conf.Audio
-		produce = conf.Produce
-		consume = conf.Consume
-		stagger = conf.Stagger
 	} else {
 		log.Println("using default settings")
 	}
 
-	staggerDur := time.Duration(stagger*1000) * time.Millisecond
+	staggerDur := time.Duration(conf.Stagger*1000) * time.Millisecond
 
-	if len(rooms) == 0 {
-		rooms = append(rooms, "default")
-	}
-
-	for _, room := range rooms {
-		addr := ":" + sfu
-		go run(room, addr, input, produce, consume, n, duration, staggerDur)
+	for i := 0; i < conf.Rooms; i++ {
+		addr := ":" + conf.SFU
+		go run(fmt.Sprintf("room %d", i), addr, conf.Input, conf.Produce, conf.Consume, conf.Clients, conf.Duration, staggerDur)
 	}
 
 	// Setup shutdown

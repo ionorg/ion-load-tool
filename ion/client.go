@@ -47,7 +47,6 @@ func NewLoadClient(name, room, address, input string) *LoadClient {
 	log.Println("connected to grpc: ", input)
 	c := sfu.NewSFUClient(conn)
 
-
 	// Create peer connection
 	pc, err := webrtc.NewPeerConnection(conf)
 	log.Println("created a peer connection: ", input)
