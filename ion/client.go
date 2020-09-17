@@ -38,17 +38,19 @@ type LoadClient struct {
 
 // NewLoadClient creates a new LoadClient instance
 func NewLoadClient(name, room, address, input string) *LoadClient {
-	log.Printf("Creating load client => name: %s room: %s input: %s", name, room, input)
-
+	log.Printf("Creating load client => name: %s room: %s input: %s address: %s\n", name, room, input, address)
 	// Set up a connection to the sfu server.
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
+	log.Println("connected to grpc: ", input)
 	c := sfu.NewSFUClient(conn)
+
 
 	// Create peer connection
 	pc, err := webrtc.NewPeerConnection(conf)
+	log.Println("created a peer connection: ", input)
 
 	if err != nil {
 		log.Fatal(err)
