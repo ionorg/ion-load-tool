@@ -3,105 +3,92 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
-	"github.com/pion/ion-load-tool/ion"
-	"github.com/pion/ion-load-tool/webm"
+	log "github.com/pion/ion-log"
+	engine "github.com/pion/ion-sdk-go/pkg"
+	"github.com/pion/webrtc/v3"
 )
 
-type roomFlags []string
-
-func (i *roomFlags) String() string {
-	return "default-room"
-}
-
-func (i *roomFlags) Set(value string) error {
-	*i = append(*i, value)
-	return nil
-}
-
-func run(room, sfu, input string, produce, consume bool, n, duration int, stagger time.Duration) {
-	var clients []*ion.LoadClient
+func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle int) {
+	log.Infof("run room=%v url=%v input=%v role=%v total=%v duration=%v cycle=%v\n", room, url, input, role, total, duration, cycle)
 	timer := time.NewTimer(time.Duration(duration) * time.Second)
 
-	for i := 0; i < n; i++ {
-		client := ion.NewLoadClient(fmt.Sprintf("client_%s_%d", room, i), room, sfu, input)
-
-		if produce {
-			// Validate type
-			if input != "" {
-				ext, ok := webm.ValidateVPFile(input)
-				log.Println(ext)
-				if !ok {
-					panic("Only IVF and WEBM containers are supported.")
-				}
+	go sfu.Stats(3)
+	for i := 0; i < total; i++ {
+		tid := fmt.Sprintf("%s_%d", room, i)
+		// tid := room
+		switch role {
+		case "pubsub":
+			t := sfu.GetTransport(room, tid)
+			err := t.AddProducer(input)
+			if err != nil {
+				log.Errorf("err=%v", err)
+				break
 			}
-
-			client.Publish()
-		} else {
-			panic("unsupported configuration. must produce or consume")
+			t.Subscribe()
+			sfu.Join(room, t)
+		case "pub":
+			t := sfu.GetTransport(room, tid)
+			err := t.AddProducer(input)
+			if err != nil {
+				log.Errorf("err=%v", err)
+				break
+			}
+			sfu.Join(room, t)
+		case "sub":
+			t := sfu.GetTransport(room, tid)
+			t.Subscribe()
+			sfu.Join(room, t)
+		default:
+			log.Errorf("invalid role! should be pub/sub/pubsub")
 		}
 
-		clients = append(clients, client)
-
-		time.Sleep(stagger)
+		time.Sleep(time.Millisecond * time.Duration(cycle))
 	}
 
 	select {
 	case <-timer.C:
 	}
-
-	for i, a := range clients {
-		// Signal shutdown
-		a.Close()
-		// Staggered shutdown.
-		if len(clients) > 1 && i < len(clients)-1 {
-			time.Sleep(stagger)
-		}
-	}
 }
 
 func main() {
-	var rooms roomFlags
-	var sfu, input string
-	var n, duration int
-	var audio, produce, consume bool
-	var stagger float64
+	//init log
+	fixByFile := []string{"asm_amd64.s", "proc.go", "icegatherer.go"}
+	fixByFunc := []string{"AddProducer"}
 
-	flag.StringVar(&input, "input", "", "path to the input media")
-	flag.StringVar(&sfu, "sfu", "localhost:50051", "ion-sfu grpc url")
-	flag.Var(&rooms, "room", "Rooms to join.")
-	flag.IntVar(&n, "clients", 1, "Number of clients to start")
-	flag.Float64Var(&stagger, "stagger", 1.0, "Number of seconds to stagger client start and stop")
-	flag.IntVar(&duration, "seconds", 60, "Number of seconds to run test for")
-	flag.BoolVar(&audio, "audio", false, "Publish audio stream from webm file")
-	flag.BoolVar(&produce, "produce", false, "path to the media file you want to playback")
-	flag.BoolVar(&consume, "consume", false, "Run subscribe to all streams and consume data")
+	//get args
+	var room string
+	var url, input string
+	var total, cycle, duration int
+	var role string
+	var loglevel string
+	// var video, audio bool
 
+	flag.StringVar(&input, "input", "./input.webm", "Path to the input media")
+	flag.StringVar(&url, "url", "localhost:50051", "Ion-sfu grpc url")
+	flag.StringVar(&room, "room", "room", "Room to join")
+	flag.IntVar(&total, "clients", 1, "Number of clients to start")
+	flag.IntVar(&cycle, "cycle", 300, "Run new client cycle in ms")
+	flag.IntVar(&duration, "duration", 3600, "Running duration in sencond")
+	flag.StringVar(&role, "role", "pubsub", "Run as pub/sub/pubsub  (sender/receiver/both)")
+	flag.StringVar(&loglevel, "loglevel", "info", "Log level")
+	// flag.BoolVar(&video, "video", true, "Publish video stream from webm file")
+	// flag.BoolVar(&audio, "audio", true, "Publish audio stream from webm file")
 	flag.Parse()
+	log.Init(loglevel, fixByFile, fixByFunc)
 
-	staggerDur := time.Duration(stagger*1000) * time.Millisecond
-
-	if len(rooms) == 0 {
-		rooms = append(rooms, "default")
+	config := engine.WebRTCTransportConfig{
+		Configuration: webrtc.Configuration{
+			SDPSemantics: webrtc.SDPSemanticsUnifiedPlan,
+			ICEServers: []webrtc.ICEServer{
+				{URLs: []string{"stun:stun.l.google.com:19302"}},
+				// {URLs: []string{"stun:stun.stunprotocol.org:3478"}},
+			},
+			ICETransportPolicy: webrtc.NewICETransportPolicy("all"),
+		},
+		Setting: webrtc.SettingEngine{},
 	}
-
-	for _, room := range rooms {
-		go run(room, sfu, input, produce, consume, n, duration, staggerDur)
-	}
-
-	// Setup shutdown
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	select {
-	case <-sigs:
-	}
-
-	log.Println("Wait for client shutdown")
-	log.Println("All clients shut down")
+	sfu := engine.NewSFU(url, config)
+	run(sfu, room, url, input, role, total, duration, cycle)
 }
