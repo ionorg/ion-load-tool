@@ -1,69 +1,69 @@
 ## Ion load testing tool
+Ion load tool support publish or subscribe streaming
+
+### Install
+```
+go get -u github.com/pion/ion-load-tool
+```
 
 ### Test Data
 Publishing of files in the following formats are supported.
 
 |Container|Video Codecs|Audio|
 |---|---|---|
-IVF| VP8 | none
-WEBM| VP8 and VP9 | ogg
+WEBM|VP8|OPUS
 
-
-
-If your data is not in this format you can transcode with:
+If your data is not webm, you can transcode
+This show how to make a 0.5Mbps webm:
 ```
-ffmpeg -i $INPUT_FILE -g 30 output.(ivf|webm)
+ffmpeg -i djrm480p.mp4 -strict -2 -b:v 0.4M -vcodec libvpx -acodec opus djrm480p.webm
 ```
 
 See the ffmpeg docs on [VP8](https://trac.ffmpeg.org/wiki/Encode/VP8) or [VP9](https://trac.ffmpeg.org/wiki/Encode/VP9) for encoding options
 
-### Run
+### Quick Start
+You need another host in the same LAN with the ion-sfu.
+You can make a script and run:
 
-`ion-load-tool -input input.ivf -clients 2 -produce -consume`
+```
+#!/bin/bash
+ulimit -c unlimited
+ulimit -SHn 1000000
+sysctl -w net.ipv4.tcp_keepalive_time=60
+sysctl -w net.ipv4.tcp_timestamps=0
+sysctl -w net.ipv4.tcp_tw_reuse=1
+#sysctl -w net.ipv4.tcp_tw_recycle=0
+sysctl -w net.core.somaxconn=65535
+sysctl -w net.ipv4.tcp_max_syn_backlog=65535
+sysctl -w net.ipv4.tcp_syncookies=1
 
-#### Input
+#publish
+ion-load-tool -input ./djrm480p.webm -clients 1 -role pub -url "ion-sfu-ip:grpc-port"
 
-Pass `-input`
+#subscribe
+#ion-load-tool -clients 100 -role sub -cycle 1000 -url "ion-sfu-ip:grpc-port"
+```
 
-File inputs and stream inputs are supported. For a files, the path can be a `ivf` or `webm` file. For streams, we support an `mid` published to the specified `sfu`
+### Command Line
 
-#### Room
+```
+./ion-load-tool --help 
+Usage of ./ion-load-tool:
+  -clients int
+    	Number of clients to start (default 1)
+  -cycle int
+    	Run new client cycle in ms (default 300)
+  -duration int
+    	Running duration in sencond (default 3600)
+  -input string
+    	Path to the input media (default "./input.webm")
+  -loglevel string
+    	Log level (default "info")
+  -role string
+    	Run as pub/sub/pubsub  (sender/receiver/both) (default "pubsub")
+  -room string
+    	Room to join (default "room")
+  -url string
+    	Ion-sfu grpc url (default "localhost:50051")
+```
 
-Pass `-room`
-
-Specify a room to pubuce/consume from. Specify multiple rooms with `-room room1 -room room2`.
-
-#### Producer
-
-Pass `-produce`
-
-Each client starts stream playback in an offset position from the last with a different track and SSRC ID to simulate independent content.
-
-
-#### Consumers
-
-Pass `-consume`
-
-Each client subscribes to all published streams in the provided room. A basic consumer with simple out-of-order detection is implemented.
-
-
-### Test Configurations
-
-#### N to N fully connected
-
-Run produce with multiple clients.
-
-`-input <file> -produce -consume -clients N`
-
-This creates N clients publishing a stream, each of which will subscribe to the other N-1 client streams.
-
-#### 1 to N fanout
-
-Run separate instances of the load tool.
-
-##### Producer
-
-`-input <file> -produce -clients 1`
-
-##### Consumer
-`-consume -clients N`
