@@ -38,8 +38,15 @@ func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle 
 			sfu.Join(room, t)
 		case "sub":
 			t := sfu.GetTransport(room, tid)
+			err := t.AddProducer(input)
+			if err != nil {
+				log.Errorf("err=%v", err)
+				break
+			}
 			t.Subscribe()
 			sfu.Join(room, t)
+			time.Sleep(time.Second * 3)
+			t.StopProducer()
 		default:
 			log.Errorf("invalid role! should be pub/sub/pubsub")
 		}
