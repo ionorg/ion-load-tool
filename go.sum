@@ -226,6 +226,8 @@ github.com/pion/ion-sdk-go v0.1.0 h1:sf06yEyC4cBLXqRJLpYdFZ6gwU8M4f2qzrBZCZHgGTg
 github.com/pion/ion-sdk-go v0.1.0/go.mod h1:+DJZYIDYCovAM31uJRjiAxrE7pl5syQuMfZhGdIip/w=
 github.com/pion/ion-sdk-go v0.1.1 h1:cweRBGOMeeaoxLNXyxxsVwPt0x1fQt/FUmh8eUgr2wU=
 github.com/pion/ion-sdk-go v0.1.1/go.mod h1:+DJZYIDYCovAM31uJRjiAxrE7pl5syQuMfZhGdIip/w=
+github.com/pion/ion-sdk-go v0.1.2-0.20201018071100-26a8c3a5296d h1:Ri+2U11Jf7/L9zDSiP3FqRHLIfSetPtFAy2NClo7dHM=
+github.com/pion/ion-sdk-go v0.1.2-0.20201018071100-26a8c3a5296d/go.mod h1:+DJZYIDYCovAM31uJRjiAxrE7pl5syQuMfZhGdIip/w=
 github.com/pion/ion-sfu v1.0.17/go.mod h1:ENCGZlJbK1jlaiMcllOZ/hf2ihJ5YOqnPllEC4rva2Y=
 github.com/pion/ion-sfu v1.0.22-0.20201001204140-020c3ad15c02 h1:30RoJqLs/C8ymlVQX0IF79vSJZJaksTpkpbJFtxOi/E=
 github.com/pion/ion-sfu v1.0.22-0.20201001204140-020c3ad15c02/go.mod h1:GeARxk9/Y/A3Jd/+fZmSsiOxsSUnZWSlLtuFoxNJgMs=
