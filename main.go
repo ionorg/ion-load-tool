@@ -26,7 +26,7 @@ func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle 
 				log.Errorf("err=%v", err)
 				break
 			}
-			t.Subscribe()
+			t.Subscribe("")
 			sfu.Join(room, t)
 		case "pub":
 			t := sfu.GetTransport(room, tid)
@@ -38,7 +38,7 @@ func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle 
 			sfu.Join(room, t)
 		case "sub":
 			t := sfu.GetTransport(room, tid)
-			t.Subscribe()
+			t.Subscribe("")
 			sfu.Join(room, t)
 		default:
 			log.Errorf("invalid role! should be pub/sub/pubsub")
