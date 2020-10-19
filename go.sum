@@ -169,6 +169,7 @@ github.com/mailru/easyjson v0.0.0-20190312143242-1de009706dbe/go.mod h1:C1wdFJiN
 github.com/marten-seemann/qpack v0.2.0/go.mod h1:F7Gl5L1jIgN1D11ucXefiuJS9UMVP2opoCp2jDKb7wc=
 github.com/marten-seemann/qtls v0.2.3/go.mod h1:xzjG7avBwGGbdZ8dTGxlBnLArsVKLvwmjgmPuiQEcYk=
 github.com/marten-seemann/qtls v0.10.0/go.mod h1:UvMd1oaYDACI99/oZUYLzMCkBXQVT0aGm99sJhbT8hs=
+github.com/marten-seemann/qtls-go1-15 v0.1.0 h1:i/YPXVxz8q9umso/5y474CNcHmTpA+5DH+mFPjx6PZg=
 github.com/marten-seemann/qtls-go1-15 v0.1.0/go.mod h1:GyFwywLKkRt+6mfU99csTEY1joMZz5vmB1WNZH3P81I=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-isatty v0.0.3/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
@@ -218,6 +219,8 @@ github.com/pion/ion-avp v1.0.16/go.mod h1:w4Doffdr1ayt3KY/PQG0emX4ClyLelnWzZ1WsF
 github.com/pion/ion-log v0.0.0-20200927081805-5ce2825dda6f/go.mod h1:turscGxpzm5X2PUoMMqAObZPHvk3iujBWcR6bnj1fWY=
 github.com/pion/ion-log v0.0.0-20201004082042-b98b485deb46 h1:BqiSrdk+DjkH0Oy8trF6tLz+U5aR9CfwFCIDOA0AlFo=
 github.com/pion/ion-log v0.0.0-20201004082042-b98b485deb46/go.mod h1:turscGxpzm5X2PUoMMqAObZPHvk3iujBWcR6bnj1fWY=
+github.com/pion/ion-log v0.0.0-20201018162658-5afa48038e76 h1:e1+7hmitdiDKC3lGwTG3IqDXP+9+kjtr6Aa7iZ8tXHg=
+github.com/pion/ion-log v0.0.0-20201018162658-5afa48038e76/go.mod h1:turscGxpzm5X2PUoMMqAObZPHvk3iujBWcR6bnj1fWY=
 github.com/pion/ion-sdk-go v0.0.0-20201017141355-2a90c7e1c53c h1:LJ8lGsWe2dYyUULeu3H511odDLKoL1Y15X4MB63tVPY=
 github.com/pion/ion-sdk-go v0.0.0-20201017141355-2a90c7e1c53c/go.mod h1:IfiLMufLjaLdOZ9I/BUUB51/pFMU+kKZdEZgtFfNMJk=
 github.com/pion/ion-sdk-go v0.0.0-20201017145428-bc420b6a374f h1:0nhdlJFdXzMqX2EVeIwZAZc/dP04GCHKMrp6VNFuB5k=
