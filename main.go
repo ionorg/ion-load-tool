@@ -19,18 +19,18 @@ func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle 
 		case "pubsub":
 			// create trans and join
 			log.Infof("sfu.GetTransport %v", room)
-			t, err := sfu.GetTransport(room)
+			t, err := sfu.GetTransport(room, input)
 			if err != nil {
 				log.Errorf("err=%v", err)
 				break
 			}
 
-			log.Infof("t.AddProducer %v", input)
-			err = t.AddProducer(input)
-			if err != nil {
-				log.Errorf("err=%v", err)
-				break
-			}
+			// log.Infof("t.AddProducer %v", input)
+			// err = t.AddProducer(input)
+			// if err != nil {
+			// log.Errorf("err=%v", err)
+			// break
+			// }
 
 			log.Infof("sfu.Subscribe")
 			err = t.Subscribe(nil)
@@ -45,22 +45,22 @@ func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle 
 			// break
 			// }
 		case "pub":
-			t, err := sfu.GetTransport(room)
+			_, err := sfu.GetTransport(room, input)
 			if err != nil {
 				log.Errorf("err=%v", err)
 				break
 			}
-			err = t.AddProducer(input)
-			if err != nil {
-				log.Errorf("err=%v", err)
-				break
-			}
+			// err = t.AddProducer(input)
+			// if err != nil {
+			// log.Errorf("err=%v", err)
+			// break
+			// }
 			// err = t.Publish()
 			// if err != nil {
 			// log.Errorf("err=%v", err)
 			// }
 		case "sub":
-			t, err := sfu.GetTransport(room)
+			t, err := sfu.GetTransport(room, "")
 			if err != nil {
 				log.Errorf("err=%v", err)
 				break
