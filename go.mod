@@ -5,5 +5,5 @@ go 1.15
 require (
 	github.com/pion/ion-log v1.0.0
 	github.com/pion/ion-sdk-go v0.1.4
-	github.com/pion/webrtc/v3 v3.0.3
+	github.com/pion/webrtc/v3 v3.0.4
 )
