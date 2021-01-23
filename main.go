@@ -18,8 +18,9 @@ func run(e *sdk.Engine, addr, session, file, role string, total, duration, cycle
 	for i := 0; i < total; i++ {
 		switch role {
 		case "pubsub":
-			log.Infof("pubsub session= %v", session)
-			c := e.AddClient(addr, session, fmt.Sprintf("%s_%d", session, i))
+			cid := fmt.Sprintf("%s_pubsub_%d", session, i)
+			log.Infof("AddClient session=%v clientid=%v", session, cid)
+			c := e.AddClient(addr, session, cid)
 			if c == nil {
 				log.Errorf("c==nil")
 				break
@@ -27,8 +28,9 @@ func run(e *sdk.Engine, addr, session, file, role string, total, duration, cycle
 			c.Join(session)
 			c.PublishWebm(file)
 		case "sub":
-			log.Infof("sub session= %v", session)
-			c := e.AddClient(addr, session, fmt.Sprintf("%s_%d", session, i))
+			cid := fmt.Sprintf("%s_sub_%d", session, i)
+			log.Infof("AddClient session=%v clientid=%v", session, cid)
+			c := e.AddClient(addr, session, cid)
 			if c == nil {
 				log.Errorf("c==nil")
 				break
