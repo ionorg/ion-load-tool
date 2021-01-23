@@ -4,7 +4,7 @@
 ### Build
 ```
 # build a linux version, we test on linux because mac fd limit 
-env GOOS=linux go build -o ion-sfu-load-tool example/ion-sfu-load-tool/main.go
+env GOOS=linux go build -o ion-load-tool main.go
 ```
 
 ### Test File
@@ -64,17 +64,17 @@ sysctl -w net.ipv4.tcp_syncookies=1
 #your command line here, make sure run it with sudo!
 # conference mode: 10v10
 # you only need one script
-./ion-sfu-load-tool -file ./djrm480p.webm -clients 10 -role pubsub -addr "yoursfuip:8000" -room 'test room' -log debug -cycle 1000
+./ion-load-tool -file ./djrm480p.webm -clients 10 -role pubsub -addr "yoursfuip:8000" -room 'test room' -log debug -cycle 1000
 
 
 
 # live mode: 1v10
 # you need to run two scripts
 # pub.sh
-#./ion-sfu-load-tool -file ./djrm480p.webm -clients 1 -role pubsub -addr "yoursfuip:8000" -room 'test room' -log debug -cycle 1000
+#./ion-load-tool -file ./djrm480p.webm -clients 1 -role pubsub -addr "yoursfuip:8000" -room 'test room' -log debug -cycle 1000
 
 # sub.sh
-#./ion-sfu-load-tool -file ./djrm480p.webm -clients 10 -role sub -addr "yoursfuip:8000" -room 'test room' -log debug -cycle 1000
+#./ion-load-tool -file ./djrm480p.webm -clients 10 -role sub -addr "yoursfuip:8000" -room 'test room' -log debug -cycle 1000
 ```
 
 
