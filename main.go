@@ -2,77 +2,40 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"time"
 
 	log "github.com/pion/ion-log"
-	engine "github.com/pion/ion-sdk-go"
+	sdk "github.com/pion/ion-sdk-go"
 	"github.com/pion/webrtc/v3"
 )
 
-func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle int) {
-	log.Infof("run room=%v url=%v input=%v role=%v total=%v duration=%v cycle=%v\n", room, url, input, role, total, duration, cycle)
+func run(e *sdk.Engine, addr, session, file, role string, total, duration, cycle int) {
+	log.Infof("run session=%v file=%v role=%v total=%v duration=%v cycle=%v\n", session, file, role, total, duration, cycle)
 	timer := time.NewTimer(time.Duration(duration) * time.Second)
 
-	go sfu.Stats(3)
+	go e.Stats(3)
 	for i := 0; i < total; i++ {
 		switch role {
 		case "pubsub":
-			// create trans and join
-			log.Infof("sfu.GetTransport %v", room)
-			t, err := sfu.GetTransport(room, input)
-			if err != nil {
-				log.Errorf("err=%v", err)
+			log.Infof("pubsub session= %v", session)
+			c := e.AddClient(addr, session, fmt.Sprintf("%s_%d", session, i))
+			if c == nil {
+				log.Errorf("c==nil")
 				break
 			}
-
-			// log.Infof("t.AddProducer %v", input)
-			// err = t.AddProducer(input)
-			// if err != nil {
-			// log.Errorf("err=%v", err)
-			// break
-			// }
-
-			log.Infof("sfu.Subscribe")
-			err = t.Subscribe(nil)
-			if err != nil {
-				log.Errorf("err=%v", err)
-			}
-
-			// log.Infof("sfu.Publish")
-			// err = t.Publish()
-			// if err != nil {
-			// log.Errorf("err=%v", err)
-			// break
-			// }
-		case "pub":
-			_, err := sfu.GetTransport(room, input)
-			if err != nil {
-				log.Errorf("err=%v", err)
-				break
-			}
-			// err = t.AddProducer(input)
-			// if err != nil {
-			// log.Errorf("err=%v", err)
-			// break
-			// }
-			// err = t.Publish()
-			// if err != nil {
-			// log.Errorf("err=%v", err)
-			// }
+			c.Join(session)
+			c.PublishWebm(file)
 		case "sub":
-			t, err := sfu.GetTransport(room, "")
-			if err != nil {
-				log.Errorf("err=%v", err)
+			log.Infof("sub session= %v", session)
+			c := e.AddClient(addr, session, fmt.Sprintf("%s_%d", session, i))
+			if c == nil {
+				log.Errorf("c==nil")
 				break
 			}
-			log.Infof("t.Subscribe")
-			err = t.Subscribe(nil)
-			if err != nil {
-				log.Errorf("err=%v", err)
-				break
-			}
+			c.Join(session)
 		default:
-			log.Errorf("invalid role! should be pub/sub/pubsub")
+			log.Errorf("invalid role! should be pubsub/sub")
 		}
 
 		time.Sleep(time.Millisecond * time.Duration(cycle))
@@ -86,51 +49,47 @@ func run(sfu *engine.SFU, room, url, input, role string, total, duration, cycle 
 func main() {
 	//init log
 	fixByFile := []string{"asm_amd64.s", "proc.go", "icegatherer.go"}
-	fixByFunc := []string{"AddProducer"}
+	fixByFunc := []string{"AddProducer", "NewClient"}
 
 	//get args
-	var room string
-	var url, input string
+	var session string
+	var addr, file string
 	var total, cycle, duration int
 	var role string
 	var loglevel string
 	// var video, audio bool
 
-	flag.StringVar(&input, "input", "./input.webm", "Path to the input media")
-	flag.StringVar(&url, "url", "localhost:50051", "Ion-sfu grpc url")
-	flag.StringVar(&room, "room", "room", "Room to join")
+	flag.StringVar(&file, "file", "./file.webm", "Path to the file media")
+	flag.StringVar(&addr, "addr", "localhost:50051", "Ion-sfu grpc addr")
+	flag.StringVar(&session, "session", "test", "join session name")
 	flag.IntVar(&total, "clients", 1, "Number of clients to start")
-	flag.IntVar(&cycle, "cycle", 300, "Run new client cycle in ms")
+	flag.IntVar(&cycle, "cycle", 1000, "Run new client cycle in ms")
 	flag.IntVar(&duration, "duration", 3600, "Running duration in sencond")
-	flag.StringVar(&role, "role", "pubsub", "Run as pub/sub/pubsub  (sender/receiver/both)")
+	flag.StringVar(&role, "role", "pubsub", "Run as pubsub/sub")
 	flag.StringVar(&loglevel, "log", "info", "Log level")
 	// flag.BoolVar(&video, "video", true, "Publish video stream from webm file")
 	// flag.BoolVar(&audio, "audio", true, "Publish audio stream from webm file")
 	flag.Parse()
 	log.Init(loglevel, fixByFile, fixByFunc)
 
-	config := engine.Config{
+	se := webrtc.SettingEngine{}
+	se.SetEphemeralUDPPortRange(10000, 15000)
+	webrtcCfg := webrtc.Configuration{
+		ICEServers: []webrtc.ICEServer{
+			webrtc.ICEServer{
+				URLs: []string{"stun:stun.stunprotocol.org:3478", "stun:stun.l.google.com:19302"},
+			},
+		},
+	}
+	config := sdk.Config{
 		Log: log.Config{
 			Level: loglevel,
 		},
-		WebRTC: engine.WebRTCConf{
-			ICEServers: []engine.ICEConf{
-				engine.ICEConf{
-					URLs:           []string{"stun:stun.stunprotocol.org:3478"},
-					Username:       "",
-					Credential:     "",
-					CredentialType: webrtc.ICECredentialTypePassword,
-				},
-			},
-			ICEPortRange: []uint16{5000, 6000},
-			// ICELite:      true,
+		WebRTC: sdk.WebRTCTransportConfig{
+			Setting:       se,
+			Configuration: webrtcCfg,
 		},
 	}
-	sfu, err := engine.NewSFU(url, config)
-	if err != nil {
-		log.Errorf("err=%v", err)
-		return
-	}
-
-	run(sfu, room, url, input, role, total, duration, cycle)
+	e := sdk.NewEngine(addr, config)
+	run(e, addr, session, file, role, total, duration, cycle)
 }
